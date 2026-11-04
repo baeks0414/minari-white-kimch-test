@@ -4,7 +4,7 @@
 ## 당일 순서
 1. 주제 확인 → 맞는 안 고르기: docs/PLAN-quest.md / PLAN-cinema.md / PLAN-hasuk.md
 2. 고른 파일을 docs/PLAN.md로 복사하고 맨 위 '주제 문장'과 [주제어] 자리만 고치기
-3. 새 저장소에 이 키트의 .github/ docs/ app/src/styles/ seed/ tests/ staticwebapp.config.json 복사 (운영진이 사전 준비물 사용을 허용한 경우만)
+3. 새 저장소에 이 키트의 .github/ docs/ app/ seed/ tests/ 복사 (config는 app/public 안) (운영진이 사전 준비물 사용을 허용한 경우만)
 4. Copilot Chat에서 /01-scaffold → /02-data → /03-core → /04-flow → /05-ai → /06-readme 순서로 실행, 단계마다 커밋·push(자동 배포)
 5. 15:00 전 docs/QA.md 확인 → `npm i -D @playwright/test` 후 `BASE_URL=배포주소 ROUTES="/,/maps,/store,/me" npx playwright test tests/smoke.spec.js` (라우트는 고른 PLAN에 맞게)
 
@@ -20,7 +20,7 @@
 | app/src/styles/tokens.css | 색·글꼴·테마 변수 (v2) |
 | seed/*.json | 3안 시드 데이터 (하숙집·호스트는 가상) |
 | tests/smoke.spec.js | 권한 없는 가상 유저 자동 점검 |
-| staticwebapp.config.json | 새로고침 404 방지 |
+| app/public/staticwebapp.config.json | 새로고침 404 방지 (꼭 app 폴더 안) |
 
 ## 11/4 리허설 결과 (Claude가 퀘스트안으로 01~06 끝까지 실행)
 - 결과: 서버 단위 테스트 7개 통과, 화면 자동 점검 11개 통과(가입→퀘스트→제안→교환→마이페이지, 권한 없음), 코드 검사 경고 0
