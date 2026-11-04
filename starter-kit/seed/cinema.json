@@ -1,0 +1,97 @@
+{
+  "_note": "시드 데이터. 작품명은 자리 표시용 가상 제목, 좌석·가격은 팀 가정값",
+  "venues": [
+    {
+      "id": "arena",
+      "name": "소싸움경기장 모래판 극장",
+      "lat": 35.6858,
+      "lng": 128.7233,
+      "seats": 300
+    },
+    {
+      "id": "tunnel",
+      "name": "와인터널 입구 마당",
+      "lat": 35.7151,
+      "lng": 128.7205,
+      "seats": 60
+    },
+    {
+      "id": "hwarang",
+      "name": "신화랑풍류마을 야외무대",
+      "lat": 35.7181,
+      "lng": 128.9223,
+      "seats": 120
+    }
+  ],
+  "films": [
+    {
+      "id": "f1",
+      "title": "(가제) 감나무 아래 여름",
+      "minutes": 95,
+      "rating": "전체"
+    },
+    {
+      "id": "f2",
+      "title": "(가제) 마지막 기차",
+      "minutes": 110,
+      "rating": "12세"
+    },
+    {
+      "id": "f3",
+      "title": "(가제) 단편 모음 — 시골의 밤",
+      "minutes": 80,
+      "rating": "전체"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "s1",
+      "venueId": "arena",
+      "filmId": "f1",
+      "start": "2026-11-11T19:00:00+09:00",
+      "price": 8000
+    },
+    {
+      "id": "s2",
+      "venueId": "arena",
+      "filmId": "f2",
+      "start": "2026-11-12T19:00:00+09:00",
+      "price": 8000
+    },
+    {
+      "id": "s3",
+      "venueId": "tunnel",
+      "filmId": "f3",
+      "start": "2026-11-11T18:00:00+09:00",
+      "price": 10000
+    },
+    {
+      "id": "s4",
+      "venueId": "hwarang",
+      "filmId": "f1",
+      "start": "2026-11-13T19:30:00+09:00",
+      "price": 8000
+    },
+    {
+      "id": "s5",
+      "venueId": "arena",
+      "filmId": "f3",
+      "start": "2026-11-13T19:00:00+09:00",
+      "price": 6000
+    }
+  ],
+  "addOns": [
+    {
+      "id": "a-wine",
+      "name": "와인터널 코스",
+      "price": 5000
+    },
+    {
+      "id": "a-stay",
+      "name": "신화랑풍류마을 1박 연결",
+      "price": 0,
+      "note": "숙소 예약 페이지로 연결"
+    }
+  ],
+  "bookings": []
+}

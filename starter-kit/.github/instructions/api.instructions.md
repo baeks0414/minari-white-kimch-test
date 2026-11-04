@@ -1,0 +1,12 @@
+---
+applyTo: "api/**"
+---
+- Azure Functions v4 (Node 20, @azure/functions). 함수 하나당 파일 하나: api/src/functions/*.js
+- 응답 형식: 성공 { data }, 실패 { error: { code, message } } + 알맞은 상태 코드(400/404/409/500).
+- 입력은 서버에서 다시 검사한다(길이·범위·필수값). 화면 값을 믿지 않는다.
+- DB: Azure Cosmos DB (@azure/cosmos). 접속 정보는 process.env.COSMOS_CONNECTION. 막히면 seed/*.json을 읽는 메모리 저장소로 대체(같은 함수 이름).
+- AI: Azure OpenAI는 process.env.AOAI_ENDPOINT / AOAI_KEY / AOAI_DEPLOYMENT. 10초 넘거나 실패하면 원문 그대로 저장하고 ai: null.
+- 순수 계산(거리·금액·중복)은 api/src/lib/에 함수로 빼고 테스트를 붙인다.
+- 테스트 스크립트는 "test": "node --test test/*.test.js" (Node 22는 폴더 이름만 주면 실패).
+- 구조: api/src/handlers/index.js에 (req) => { status, body } 핸들러를 모으고, api/src/functions/index.js는 app.http('api', { route: '{*path}' })로 전부 넘긴다. 로컬은 같은 핸들러를 쓰는 api/dev-server.js(node http, 7071 포트)로 실행 → Azure Functions Core Tools 없이도 개발 가능.
+- 사용자 구분은 헤더 x-user-id. 사용자 없으면 404 NO_USER.

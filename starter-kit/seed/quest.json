@@ -1,0 +1,235 @@
+{
+  "_note": "시드 데이터. 좌표는 공공데이터·지도 기준 근사값, 포인트·가격은 팀 가정값",
+  "regions": [
+    {
+      "id": "cheongdo-hwayang",
+      "name": "청도읍·화양",
+      "status": "open",
+      "center": {
+        "lat": 35.69,
+        "lng": 128.73
+      },
+      "limitedItem": "터널 와인 모자"
+    },
+    {
+      "id": "cheongdo-unmun",
+      "name": "운문",
+      "status": "open",
+      "center": {
+        "lat": 35.695,
+        "lng": 128.94
+      },
+      "limitedItem": "화랑 머리띠"
+    },
+    {
+      "id": "next-region",
+      "name": "다른 지역",
+      "status": "coming_soon"
+    }
+  ],
+  "places": [
+    {
+      "id": "cheongdo-station",
+      "regionId": "cheongdo-hwayang",
+      "name": "청도역",
+      "lat": 35.6405,
+      "lng": 128.7466,
+      "code": "CD-STATION-01",
+      "radiusM": 100,
+      "description": "청도 여행의 출발점이에요."
+    },
+    {
+      "id": "wine-tunnel",
+      "regionId": "cheongdo-hwayang",
+      "name": "청도 와인터널",
+      "lat": 35.7151,
+      "lng": 128.7205,
+      "code": "CD-WINE-01",
+      "radiusM": 100,
+      "description": "1904년에 만든 옛 경부선 기차 터널을 감와인 저장고로 쓰고 있어요."
+    },
+    {
+      "id": "bullfight-arena",
+      "regionId": "cheongdo-hwayang",
+      "name": "청도 소싸움경기장",
+      "lat": 35.6858,
+      "lng": 128.7233,
+      "code": "CD-ARENA-01",
+      "radiusM": 150,
+      "description": "지붕이 있는 돔 경기장이에요. 경기는 주말에만 열려요."
+    },
+    {
+      "id": "darori",
+      "regionId": "cheongdo-hwayang",
+      "name": "다로리 마을",
+      "lat": 35.7068,
+      "lng": 128.7213,
+      "code": "CD-DARORI-01",
+      "radiusM": 150,
+      "description": "빈집을 고쳐 마을호텔로 만드는 사업이 진행 중인 마을이에요."
+    },
+    {
+      "id": "unmunsa",
+      "regionId": "cheongdo-unmun",
+      "name": "운문사",
+      "lat": 35.674,
+      "lng": 128.9566,
+      "code": "CD-UNMUN-01",
+      "radiusM": 150,
+      "description": "운문산 자락의 큰 절이에요."
+    },
+    {
+      "id": "hwarang-village",
+      "regionId": "cheongdo-unmun",
+      "name": "신화랑풍류마을",
+      "lat": 35.7181,
+      "lng": 128.9223,
+      "code": "CD-HWARANG-01",
+      "radiusM": 150,
+      "description": "숙박과 체험을 할 수 있는 마을이에요."
+    }
+  ],
+  "quests": [
+    {
+      "id": "q-wine-tunnel",
+      "placeId": "wine-tunnel",
+      "type": "tour",
+      "title": "와인터널 '내 칸' 찾기",
+      "missions": [
+        {
+          "id": "m-wine-1",
+          "order": 1,
+          "kind": "arrive",
+          "point": 50
+        },
+        {
+          "id": "m-wine-2",
+          "order": 2,
+          "kind": "photo",
+          "prompt": "터널 안 감와인 저장 칸 앞에서 한 장",
+          "point": 50,
+          "skippable": true
+        },
+        {
+          "id": "m-wine-3",
+          "order": 3,
+          "kind": "quiz",
+          "prompt": "이 터널은 몇 년에 만든 기차 터널일까요?",
+          "choices": [
+            "1904",
+            "1950",
+            "1980",
+            "2006"
+          ],
+          "answer": "1904",
+          "point": 50
+        }
+      ]
+    },
+    {
+      "id": "q-station",
+      "placeId": "cheongdo-station",
+      "type": "tour",
+      "title": "청도역에서 출발 인증",
+      "missions": [
+        {
+          "id": "m-st-1",
+          "order": 1,
+          "kind": "arrive",
+          "point": 50
+        }
+      ]
+    },
+    {
+      "id": "q-unmunsa",
+      "placeId": "unmunsa",
+      "type": "tour",
+      "title": "운문사 산책",
+      "missions": [
+        {
+          "id": "m-un-1",
+          "order": 1,
+          "kind": "arrive",
+          "point": 50
+        },
+        {
+          "id": "m-un-2",
+          "order": 2,
+          "kind": "photo",
+          "prompt": "절 입구 풍경 한 장",
+          "point": 50,
+          "skippable": true
+        }
+      ]
+    },
+    {
+      "id": "p-arena",
+      "placeId": "bullfight-arena",
+      "type": "proposal",
+      "title": "평일에 비는 소싸움장, 뭐로 쓸까?",
+      "point": 300,
+      "spaceInfo": {
+        "now": "토·일 경기만, 평일 5일 비어 있음",
+        "numbers": "돔 경기장 · 관람석 약 1만1천 석",
+        "originalUse": "상설 소싸움 경기장",
+        "countyPlan": "확인 중"
+      }
+    },
+    {
+      "id": "p-darori",
+      "placeId": "darori",
+      "type": "proposal",
+      "title": "다로리 빈집, 마을호텔 말고 또 뭐가 좋을까?",
+      "point": 300,
+      "spaceInfo": {
+        "now": "빈집 일부를 마을호텔로 고치는 중",
+        "numbers": "빈집 8호 대상",
+        "originalUse": "주택",
+        "countyPlan": "마을호텔 2027년 완료 예정"
+      }
+    }
+  ],
+  "products": [
+    {
+      "id": "pr-gammal",
+      "regionId": "cheongdo-hwayang",
+      "category": "local_food",
+      "name": "감말랭이 한 봉 교환권",
+      "pricePoint": 400,
+      "stock": 30,
+      "pickup": "로컬푸드 매장"
+    },
+    {
+      "id": "pr-bansi",
+      "regionId": "cheongdo-hwayang",
+      "category": "local_food",
+      "name": "청도 반시 1kg 교환권",
+      "pricePoint": 2000,
+      "stock": 10,
+      "season": "10~12월",
+      "pickup": "농가 직배송"
+    },
+    {
+      "id": "pr-wine",
+      "regionId": "cheongdo-hwayang",
+      "category": "local_food",
+      "name": "감와인 할인권",
+      "pricePoint": 300,
+      "stock": 50,
+      "pickup": "와인터널 현장"
+    },
+    {
+      "id": "pr-hat",
+      "regionId": "cheongdo-hwayang",
+      "category": "item",
+      "name": "터널 와인 모자",
+      "pricePoint": 0,
+      "unlock": "맵 완주"
+    }
+  ],
+  "users": [],
+  "checkins": [],
+  "proposals": [],
+  "redemptions": [],
+  "pointLogs": []
+}

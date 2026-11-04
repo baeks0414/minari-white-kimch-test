@@ -1,0 +1,187 @@
+{
+  "_note": "시드 데이터. 하숙집·호스트·편지는 모두 가상, 가격은 팀 가정값(1인 1박 조식 포함 45,000원 기준)",
+  "hosts": [
+    {
+      "id": "h1",
+      "name": "박순자",
+      "ageGroup": "60대",
+      "intro": "아침상은 제가 제일 자신 있어요."
+    },
+    {
+      "id": "h2",
+      "name": "김말순",
+      "ageGroup": "70대",
+      "intro": "감 따는 철에 오세요."
+    },
+    {
+      "id": "h3",
+      "name": "이정호",
+      "ageGroup": "50대",
+      "intro": "미나리 밭 구경시켜 드려요."
+    },
+    {
+      "id": "h4",
+      "name": "최영희",
+      "ageGroup": "60대",
+      "intro": "냇가 소리가 좋아요."
+    },
+    {
+      "id": "h5",
+      "name": "정미숙",
+      "ageGroup": "50대",
+      "intro": "복숭아잼 직접 만들어요."
+    },
+    {
+      "id": "h6",
+      "name": "한도윤",
+      "ageGroup": "30대",
+      "intro": "청도 토박이 청년 호스트예요."
+    },
+    {
+      "id": "h7",
+      "name": "오금자",
+      "ageGroup": "70대",
+      "intro": "조용히 쉬다 가세요."
+    },
+    {
+      "id": "h8",
+      "name": "윤상철",
+      "ageGroup": "60대",
+      "intro": "정자나무 그늘이 명당이에요."
+    }
+  ],
+  "houses": [
+    {
+      "id": "house1",
+      "name": "순자네 하숙",
+      "area": "각북면",
+      "hostId": "h1",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    },
+    {
+      "id": "house2",
+      "name": "감나무집",
+      "area": "화양읍",
+      "hostId": "h2",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    },
+    {
+      "id": "house3",
+      "name": "미나리 언덕",
+      "area": "운문면",
+      "hostId": "h3",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    },
+    {
+      "id": "house4",
+      "name": "냇가 사랑채",
+      "area": "이서면",
+      "hostId": "h4",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    },
+    {
+      "id": "house5",
+      "name": "복숭아밭 집",
+      "area": "풍각면",
+      "hostId": "h5",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    },
+    {
+      "id": "house6",
+      "name": "골목 끝 하숙",
+      "area": "매전면",
+      "hostId": "h6",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    },
+    {
+      "id": "house7",
+      "name": "산자락 방",
+      "area": "금천면",
+      "hostId": "h7",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    },
+    {
+      "id": "house8",
+      "name": "정자나무 집",
+      "area": "각남면",
+      "hostId": "h8",
+      "rooms": 2,
+      "maxGuests": 4,
+      "pricePerNight": 45000,
+      "breakfast": "제철 나물 밥상",
+      "pickupFee": 5000,
+      "tags": [
+        "조식 포함",
+        "청도역 픽업"
+      ]
+    }
+  ],
+  "bookings": [],
+  "letters": [
+    {
+      "id": "l1",
+      "houseId": "house1",
+      "guestName": "지원",
+      "paper": 2,
+      "rating": 5,
+      "body": "아침 된장국이 아직도 생각나요. 또 올게요!",
+      "createdAt": "2026-10-20T09:00:00+09:00"
+    }
+  ]
+}

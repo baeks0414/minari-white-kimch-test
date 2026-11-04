@@ -1,0 +1,13 @@
+---
+applyTo: "app/**"
+---
+- React 함수 컴포넌트 + hooks. 페이지는 app/src/pages, 공통 UI는 app/src/components.
+- 라우트마다 페이지 1개. 없는 주소는 NotFound 페이지(처음으로 버튼).
+- fetch는 app/src/api.js 한 곳에서. 실패하면 { error } 를 돌려주고 화면은 오류 박스를 보여 준다.
+- 입력칸 글자 16px 이상, 모든 input에 label. 버튼 최소 높이 var(--tap).
+- 아이콘은 lucide-react. 이미지는 alt 필수.
+- 위치: navigator.geolocation 실패·5초 무응답 → 기본 위치(청도역 35.6405, 128.7466).
+- vite.config.js: server.proxy와 preview.proxy 둘 다 { '/api': 'http://localhost:7071' }.
+- 가입 전에는 사용자 API(/me 등)를 호출하지 않는다 → 주소를 바로 연 가상 유저에게 404 콘솔 오류가 나지 않게. (useApi(path)에 null이면 요청 생략)
+- 레이아웃: flex 안 input·select는 min-width: 0, ol/ul은 padding 0·list-style none, 버튼 글자는 white-space: nowrap.
+- 지도: 장소가 가까우면 핀이 겹친다. Leaflet(react-leaflet)+OpenStreetMap으로 확대·축소를 주거나, 직접 그릴 땐 핀 이름은 목록에만 보여 준다.

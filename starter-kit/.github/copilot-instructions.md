@@ -1,0 +1,13 @@
+# 프로젝트 규칙 (미나리 백김치 · 청도 바이브코딩 해커톤)
+- 무엇을 만드는지는 docs/PLAN.md, 화면 규칙은 docs/DESIGN.md를 먼저 읽는다.
+- 구조: app/ (React + Vite, JavaScript, react-router) · api/ (Azure Functions Node 20) · Azure Static Web Apps 배포.
+- 답변·주석·화면 문구는 한국어, 존댓말(~해요).
+- 함수 위에 처리하는 요구사항 ID를 주석으로 단다. 예: // F-06 도착 판정(100m 이내)
+- 핵심 계산은 서버(api/)에서 한다: 거리·중복·금액·포인트·AI 정리. 화면은 결과만 보여 준다.
+- 위치·카메라 권한이 없어도 모든 동선이 끝까지 가야 한다(기본 위치·코드 입력·건너뛰기).
+- API 오류 시 흰 화면 금지: "잠시 후 다시 시도해 주세요" + 다시 시도 버튼.
+- 화면마다 h1 하나, 하단 메뉴는 nav, 이동은 a/Link, 동작은 button. 버튼 글자는 동사.
+- 색·글꼴은 app/src/styles/tokens.css 변수만 쓴다(직접 색 코드 금지). 오렌지 버튼 글씨는 --color-on-primary(먹빛).
+- 비밀값은 .env / Azure 환경 변수에만. 코드·커밋에 키를 넣지 않는다.
+- 새 패키지는 꼭 필요할 때만. 쓰지 않는 코드·console.log는 남기지 않는다.
+- 커밋 메시지: [feat|fix|ui|data|docs|chore] 기능ID 한 줄 요약
