@@ -1,0 +1,121 @@
+/* =========================================================
+   미나리 백김치 공통 디자인 토큰 v2 (청도 해커톤, 2026-11-04)
+   - 기준: 수희 님 브랜드 보드 (청도 감빛 오렌지·크림·자연초록·와인빛·먹빛·안개빛, Gmarket Sans + Pretendard)
+   - 세 아이디어(시네마 / 퀘스트 / 하숙) 공통 + 아이디어별 테마 + 지역 테마
+   - 대비는 WCAG AA(본문 4.5:1) 기준으로 계산한 값
+   ========================================================= */
+
+/* 글꼴: index.html <head>에 넣기
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap">
+Gmarket Sans는 아래 @font-face 사용 (무료·상업 사용 가능, 출처: G마켓)
+*/
+@font-face { font-family: "GmarketSans"; font-weight: 500; font-display: swap;
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff") format("woff"); }
+@font-face { font-family: "GmarketSans"; font-weight: 700; font-display: swap;
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff") format("woff"); }
+
+:root {
+  /* ---------- 브랜드 색 (수희 님 보드) ---------- */
+  --gam: #F28A32;          /* 청도 감빛 오렌지 · 먹빛 글씨 4.96:1 OK · 흰 글씨 2.5:1 금지 */
+  --cream: #FFF2DF;        /* 청도 크림 · 바탕 */
+  --leaf: #78966A;         /* 청도 자연초록 · 장식·일러스트·큰 면적 전용 (흰 글씨 3.3:1, 먹빛 3.7:1 → 글씨 배경 금지) */
+  --leaf-strong: #4E6B42;  /* 자연초록 진하게 · 버튼·글씨용, 흰 글씨 6.0:1 (보드에 없는 보조색) */
+  --wine: #713D4B;         /* 청도 와인빛 · 흰 글씨 8.5:1 */
+  --ink: #3C332D;          /* 청도 먹빛 · 본문 글씨, 크림 위 11.2:1 */
+  --mist: #DCE5D5;         /* 청도 안개빛 · 보조 바탕·칩, 먹빛 글씨 9.5:1 */
+
+  /* ---------- 보조 색 (앱 기능용, 보드 밖) ---------- */
+  --ink-muted: #6B625A;    /* 보조 글씨 · 크림 위 5.4:1 */
+  --surface: #FFFFFF;
+  --line: #EADCC6;
+  --sky: #2F5DA8;          /* 미래 제안·정보·포커스 링, 흰 글씨 6.5:1 */
+  --sky-soft: #E7EEF9;
+  --night: #2B2A4A;        /* 시네마 밤 바탕, 흰 글씨 13.7:1 */
+  --gam-soft: #FDE3CB;     /* 감빛 연한 배경(배지) */
+  --warning: #F2A65A;      /* + 먹빛 글씨 */
+  --danger: #B42318;       /* 흰 글씨 */
+
+  /* ---------- 역할 (컴포넌트는 이 이름만 쓰기) ---------- */
+  --bg: var(--cream);
+  --color-primary: var(--gam);
+  --color-primary-hover: #E07A24;
+  --color-on-primary: var(--ink);      /* 오렌지 버튼 글씨는 먹빛 (수희 님 규칙) */
+  --color-secondary: var(--leaf-strong);
+  --color-on-secondary: #FFFFFF;
+  --color-accent: var(--wine);
+  --success: var(--leaf-strong);
+  --info: var(--sky);
+
+  /* ---------- 글꼴 ---------- */
+  --font-display: "GmarketSans", "Pretendard", sans-serif;   /* 제목·큰 버튼 */
+  --font-body: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-letter: "Gowun Batang", serif;                     /* 하숙 편지 본문 */
+
+  --fs-12: 12px; --fs-14: 14px;
+  --fs-16: 16px;  /* 본문·입력칸 (16 미만이면 아이폰에서 확대) */
+  --fs-18: 18px; --fs-22: 22px; --fs-28: 28px;
+  --lh: 1.5;
+
+  /* ---------- 간격·모양 ---------- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-6: 24px; --sp-8: 32px;
+  --gutter: 16px;
+  --r-sm: 8px; --r-md: 16px; --r-lg: 24px; --r-pill: 999px;   /* 보드처럼 둥글게 */
+  --shadow-card: 0 2px 10px rgba(60, 51, 45, 0.08);
+  --tap: 48px;             /* 버튼 높이 (보드의 알약 버튼) */
+  --icon: 24px;
+  --max-w: 480px;
+}
+
+/* ---------- 아이디어별 테마: <body data-app="..."> ---------- */
+[data-app="quest"] {           /* 관광지 리워드 */
+  --pin-tour: var(--gam);      /* 관광 퀘스트 핀 */
+  --pin-proposal: var(--sky);  /* 미래 제안 핀 */
+  --pin-done: var(--leaf-strong);
+}
+[data-app="cinema"] {          /* 소싸움장 시네마 (밤 화면) */
+  --bg: var(--night);
+  --surface: #36355A;
+  --ink: #FFF2DF;
+  --ink-muted: #C9C4D8;
+  --line: #4A4970;
+  --color-accent: var(--gam);
+}
+[data-app="hasuk"] {           /* 시골 하숙집 */
+  --paper-gam: #FDE3CB;
+  --paper-leaf: var(--mist);
+  --paper-wine: #F1E1E5;
+  --paper-cream: var(--cream);
+  --paper-night: #E6E5F0;
+}
+
+/* ---------- 지역 테마 (전국 투어 확장): <body data-region="..."> ----------
+   지역마다 강조색·캐릭터 소품·지역 이름만 바꾸고 나머지는 그대로. */
+[data-region="cheongdo"] {
+  --region-accent: var(--gam);
+  --region-name: "청도";
+}
+
+/* ---------- 기본 적용 ---------- */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-16);
+  line-height: var(--lh);
+  word-break: keep-all;
+}
+h1, h2, .display { font-family: var(--font-display); font-weight: 700; }
+h1 { font-size: var(--fs-22); }
+button, .btn {
+  min-height: var(--tap);
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-size: var(--fs-16);
+  font-weight: 700;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-on-primary); border: 0; }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-secondary { background: var(--color-secondary); color: var(--color-on-secondary); border: 0; }
+:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }

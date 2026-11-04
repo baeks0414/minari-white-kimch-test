@@ -1,0 +1,16 @@
+{
+  "name": "api",
+  "private": true,
+  "version": "0.0.1",
+  "main": "src/functions/index.js",
+  "scripts": {
+    "start": "node dev-server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
