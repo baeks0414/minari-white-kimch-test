@@ -1,12 +1,14 @@
 // 모든 API 핸들러: (req) => { status, body }
 // req = { method, path, query, headers, body }
+const store = require('../lib/store');
 
-function health() {
-  return { status: 200, body: { data: { ok: true } } };
-}
+const ok = (data) => ({ status: 200, body: { data } });
 
 const routes = {
-  'GET health': health,
+  'GET health': () => ok({ ok: true }),
+  'GET regions': () => ok(store.listRegions()),
+  'GET places': (req) => ok(store.listPlaces(req.query?.regionId)),
+  'GET products': () => ok(store.listProducts()),
 };
 
 async function handle(req) {
