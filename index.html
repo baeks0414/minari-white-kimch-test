@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>미나리 농가 코파일럿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<meta name="description" content="청도 새내기 농부를 위한 사진 진단, 날씨 기반 관리, 영농 기록·일정, 농기계 임대, 선배 농부 커뮤니티">
+<meta name="theme-color" content="#566b45">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="logo" aria-hidden="true">밭</div>
+    <div class="brand">미나리<small>청도 농가 코파일럿</small></div>
+    <span class="spacer"></span>
+    <div class="profile" title="시연 프로필"><span class="av" aria-hidden="true">감</span><div><b>감나무 농가</b><span>시연 프로필</span></div></div>
+    <button class="iconbtn" id="reset" title="시연 데이터 초기화" aria-label="시연 데이터 초기화"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/></svg></button>
+  </div>
+</header>
+<main class="wrap" id="view" aria-live="polite"></main>
+<nav class="tabs" aria-label="메뉴"><div class="wrap" id="tabs"></div></nav>
+<div class="toast" id="toast" role="status"></div>
+<noscript><p class="wrap">이 앱은 자바스크립트가 필요해요.</p></noscript>
+<script type="module" src="app.js"></script>
+</body>
+</html>
