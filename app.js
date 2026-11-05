@@ -388,18 +388,24 @@ function viewDiagnose() {
   </div>
   <div id="dxSteps"></div>
   ${r ? renderDxResult(r) : ''}
-  <p class="notice">결과는 AI 추정이에요. 약제명·희석 배수는 알려 드리지 않아요. 등록 약제는 <a href="${PEST_LINKS.pesticide}" target="_blank" rel="noopener">농약안전정보시스템</a>에서 확인하고 라벨대로 쓰세요.</p>`;
+  <p class="notice">결과는 참고용이에요. 약제명·희석 배수는 알려 드리지 않아요. 등록 약제는 <a href="${PEST_LINKS.pesticide}" target="_blank" rel="noopener">농약안전정보시스템</a>에서 확인하고 라벨대로 쓰세요.</p>`;
 }
 
 function renderDxResult(r) {
+  const fromAgent = r.source === 'agent';
+  const sourceTag = `<span class="tag ${fromAgent ? 'ai' : 'warn'}">${fromAgent ? 'AI 에이전트' : '앱 규칙 기반'}</span>`;
+  const sourceText = fromAgent
+    ? `Copilot 에이전트: 진단 → 검증 (${esc((r.models || []).join(', '))})`
+    : 'AI 에이전트 응답이 없어 앱 안의 규칙으로 정리했어요.';
   if (r.hard) return `
-    <div class="card"><h3>판단하기 어려워요 <span class="tag ai">AI 추정</span></h3>
+    <div class="card"><h3>판단하기 어려워요 ${sourceTag}</h3>
+      <p class="small muted">${sourceText}</p>
       <p class="small">특징이 부족하거나 사진이 흐려 후보를 정하기 어려워요.</p>
       <ul class="small"><li>가까이, 밝은 곳에서 다시 찍어 주세요.</li><li>잎은 앞면과 뒷면을 모두 찍어 주세요.</li><li>계속 모르겠으면 청도군 농업기술센터에 사진을 보여 주세요.</li></ul>
       <a href="${PEST_LINKS.ncpms}" target="_blank" rel="noopener">국가농작물병해충관리시스템 도감 보기</a></div>`;
   return `
-  <h2>의심 후보 <span class="tag ai">AI 추정</span></h2>
-  <p class="small muted" style="margin-top:-6px">${r.source === 'agent' ? `Copilot 에이전트: 진단 → 검증 (${esc((r.models || []).join(', '))})` : '에이전트 연결 전이라 앱 안의 규칙으로 정리했어요.'}</p>
+  <h2>의심 후보 ${sourceTag}</h2>
+  <p class="small muted" style="margin-top:-6px">${sourceText}</p>
   ${r.top.map((c) => `
     <div class="card cand ${c.conf === '높음' ? 'high' : c.conf === '중간' ? 'mid' : 'low'}">
       <div class="row"><h3 class="grow">${esc(c.p.name)} <span class="muted small">(${esc(c.p.kind)})</span></h3><span class="tag ${c.conf === '높음' ? 'danger' : c.conf === '중간' ? 'warn' : ''}">확신 ${c.conf}</span></div>
@@ -443,8 +449,9 @@ function bindDiagnose(root) {
   const kp = $('#keepPhoto', root); if (kp) kp.onchange = () => dx.keepPhoto = kp.checked;
   const sv = $('#saveDx', root); if (sv) sv.onclick = () => {
     const r = dx.result; const field = S.profile.fields.find((f) => f.crop === dx.crop);
+    const sourceLabel = r.source === 'agent' ? 'AI 추정' : '앱 규칙 기반';
     S.logs.push({ id: uid(), date: todayStr(), fieldId: field?.id, work: '증상 관찰', hours: 0.2,
-      note: r.hard ? '사진 진단: 판단 어려움' : `사진 진단(AI 추정): ${r.top.map((c) => `${c.p.name}(${c.conf})`).join(', ')}`,
+      note: r.hard ? `사진 진단(${sourceLabel}): 판단 어려움` : `사진 진단(${sourceLabel}): ${r.top.map((c) => `${c.p.name}(${c.conf})`).join(', ')}`,
       photo: dx.keepPhoto ? dx.photo : null });
     if (!r.hard) addTask({ title: `${r.top[0].p.name} 확산 여부 다시 확인`, date: addDays(todayStr(), 3), from: '사진 진단' });
     save(); toast('영농 기록에 남겼어요'); dx.result = null; dx.photo = null; dx.stats = null; dx.picked.clear(); location.hash = '#log';

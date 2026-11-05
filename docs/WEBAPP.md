@@ -27,10 +27,16 @@ python3 -m http.server 8000
 
 ## 가상 사용자 테스트 (10개 시나리오)
 
+Python 3.10 이상이 필요하다. 아래 명령은 첫 번째 터미널에서 실행하고, E2E 테스트는 두 번째 터미널에서 실행한다. GitHub Actions도 배포 전에 이 테스트를 실행한다.
+
 ```
-python3 -m http.server 8765 &
-pip install playwright pillow && playwright install chromium
-python3 tests/e2e_qa.py
+python3.10 -m pip install playwright pillow
+python3.10 -m playwright install chromium
+python3.10 -m http.server 8765
+```
+
+```
+python3.10 tests/e2e_qa.py
 ```
 
 | # | 시나리오 | 확인하는 것 |

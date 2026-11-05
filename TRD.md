@@ -77,9 +77,16 @@ Copilot SDK는 처음 실행할 때 Copilot CLI를 `/tmp/copilot-cli`에 내려�
 
 ## 7. 테스트
 
+Python 3.10 이상이 필요하다. 첫 번째 터미널에서 서버를 실행하고, 두 번째 터미널에서 테스트를 실행한다. GitHub Actions도 배포 전에 이 테스트를 실행한다.
+
 ```
-python3 -m http.server 8765 &
-python3 tests/e2e_qa.py
+python3.10 -m pip install playwright pillow
+python3.10 -m playwright install chromium
+python3.10 -m http.server 8765
+```
+
+```
+python3.10 tests/e2e_qa.py
 ```
 
 10개 시나리오: 휴대폰 첫 방문, 실시간 날씨, 감 탄저병 진단, 흐린 사진, 미나리 진딧물·사진 저장, 기록→일정, 농기계 임대, 커뮤니티 보안, 저장소 막힘, 데스크톱·다크 모드·접근성. 에이전트 응답 형식(`source: "agent"`) 표시도 확인한다.

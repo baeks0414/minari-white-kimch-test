@@ -1,6 +1,7 @@
-import asyncio, json, sys, io
+import asyncio, base64, json, io
 from playwright.async_api import async_playwright
 import os, pathlib
+from fractions import Fraction
 SP = str(pathlib.Path(__file__).parent / 'shots') + '/'; os.makedirs(SP, exist_ok=True)
 BASE = os.environ.get('BASE', 'http://localhost:8765/')
 results = []
@@ -17,7 +18,20 @@ def leaf_png():
     im = Image.new('RGB', (400, 300), (60, 140, 60)); d = ImageDraw.Draw(im)
     for x in range(40, 380, 60): d.ellipse([x, 100, x + 30, 130], fill=(30, 20, 15))
     for x in range(20, 380, 50): d.line([x, 0, x + 40, 300], fill=(200, 230, 200), width=3)
-    b = io.BytesIO(); im.save(b, 'JPEG'); return b.getvalue()
+    exif = Image.Exif()
+    exif[0x8825] = {
+        1: 'N', 2: (Fraction(37), Fraction(30), Fraction(0)),
+        3: 'E', 4: (Fraction(127), Fraction(0), Fraction(0)),
+    }
+    b = io.BytesIO(); im.save(b, 'JPEG', exif=exif); return b.getvalue()
+
+def has_exif(data):
+    from PIL import Image
+    return bool(Image.open(io.BytesIO(data)).getexif())
+
+def has_gps_exif(data):
+    from PIL import Image
+    return 0x8825 in Image.open(io.BytesIO(data)).getexif()
 
 LIVE = {
     "current": {"temperature_2m": 8.2, "relative_humidity_2m": 88, "precipitation": 0, "weather_code": 61, "wind_speed_10m": 2.1},
@@ -80,18 +94,22 @@ async def main():
         await pg.click('#runDx'); await pg.wait_for_selector('#saveDx', timeout=8000)
         t = await pg.inner_text('#view')
         ok(3, '탄저병' in t and '확신 높음' in t, '탄저병 확신 높음')
+        ok(3, '앱 규칙 기반' in t and await pg.locator('#view .tag.ai').count() == 0, '규칙 기반 fallback으로 표시')
         ok(3, '습한 조건' in t, '날씨 근거 포함')
         ct = ' '.join(await pg.locator('.cand').all_inner_texts()); ok(3, ct and not any(k in ct for k in ['희석', '배액', 'ml', '살포량', '배 희석']), '후보 카드에 약제 처방 없음')
         await pg.click('#saveDx'); await pg.wait_for_timeout(400)
         ok(3, pg.url.endswith('#log'), '저장 후 기록 화면 이동')
-        t = await pg.inner_text('#view'); ok(3, '증상 관찰' in t and '확산 여부' in t, '기록과 재확인 일정 생성')
+        t = await pg.inner_text('#view')
+        ok(3, '증상 관찰' in t and '확산 여부' in t, '기록과 재확인 일정 생성')
+        ok(3, '사진 진단(앱 규칙 기반)' in t, '기록에도 fallback 출처 표시')
 
         # 3b 에이전트 응답이 오면 에이전트 결과로 표시
         pga = await page(b, live='fail')
         AG = {"top": [{"p": {"name": "탄저병", "kind": "병", "feature": "f", "care": ["c"]}, "conf": "중간", "ev": ["분홍 포자"]}], "dropped": [{"p": {"name": "둥근무늬낙엽병"}, "reason": "근거 부족"}], "hard": False, "source": "agent", "models": ["gpt-5", "claude-sonnet-4"]}
         await pga.route('**/api/diagnose', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps(AG)))
         await go(pga, '#diagnose'); await pga.click('[data-sym=pink_spore]'); await pga.click('#runDx'); await pga.wait_for_selector('#saveDx', timeout=8000)
-        t = await pga.inner_text('#view'); ok(3, 'Copilot 에이전트' in t and '근거 부족' in t, '에이전트 결과·검증 사유 표시')
+        t = await pga.inner_text('#view')
+        ok(3, 'AI 에이전트' in t and 'Copilot 에이전트' in t and '앱 규칙 기반' not in t and '근거 부족' in t and await pga.locator('#view h2 .tag.ai').count() == 1, '실제 에이전트 결과와 검증 사유 표시')
 
         # 4 아무것도 안 고르고 진단 / 흐린 사진
         pg4 = await page(b, live='fail'); await go(pg4, '#diagnose')
@@ -100,17 +118,25 @@ async def main():
         await pg4.set_input_files('#photo', files=[{'name': 'g.png', 'mimeType': 'image/png', 'buffer': gray_png()}]); await pg4.wait_for_timeout(600)
         t = await pg4.inner_text('#view'); ok(4, '흐릿' in t, f'흐린 사진 경고')
         await pg4.click('[data-sym=early_leaf_drop]'); await pg4.click('#runDx'); await pg4.wait_for_timeout(3000)
-        t = await pg4.inner_text('#view'); ok(4, '판단하기 어려워요' in t, '흐린 사진 + 약한 특징 → 판단 어려움')
+        t = await pg4.inner_text('#view')
+        ok(4, '판단하기 어려워요' in t, '흐린 사진 + 약한 특징 → 판단 어려움')
+        ok(4, '앱 규칙 기반' in t and await pg4.locator('#view .tag.ai').count() == 0, '판단 어려움도 fallback으로 표시')
 
         # 5 미나리 진딧물 + 사진 저장(위치 정보 제거)
         await go(pg4, '#diagnose'); await pg4.click('[data-crop="미나리"]')
-        await pg4.set_input_files('#photo', files=[{'name': 'l.jpg', 'mimeType': 'image/jpeg', 'buffer': leaf_png()}]); await pg4.wait_for_timeout(600)
+        leaf = leaf_png()
+        ok(5, has_gps_exif(leaf), '업로드 사진에 GPS EXIF 포함')
+        await pg4.set_input_files('#photo', files=[{'name': 'l.jpg', 'mimeType': 'image/jpeg', 'buffer': leaf}]); await pg4.wait_for_timeout(600)
         for s in ['small_insects', 'sticky']: await pg4.click(f'[data-sym={s}]')
         await pg4.click('#runDx'); await pg4.wait_for_selector('#saveDx', timeout=8000)
         t = await pg4.inner_text('#view'); ok(5, '진딧물' in t, '미나리 진딧물 후보')
         await pg4.check('#keepPhoto'); await pg4.click('#saveDx'); await pg4.wait_for_timeout(400)
         ok(5, await pg4.locator('img[alt="기록 사진"]').count() == 1, '사진 기록 저장')
-        src = await pg4.get_attribute('img[alt="기록 사진"]', 'src'); ok(5, src.startswith('data:image/jpeg'), '다시 그린 JPEG(위치 정보 없음)')
+        src = await pg4.get_attribute('img[alt="기록 사진"]', 'src')
+        is_jpeg = src.startswith('data:image/jpeg;base64,')
+        ok(5, is_jpeg, '다시 그린 JPEG로 저장')
+        saved_photo = base64.b64decode(src.partition(',')[2]) if is_jpeg else b''
+        ok(5, is_jpeg and not has_exif(saved_photo), '저장한 JPEG에서 모든 EXIF 메타데이터 제거')
 
         # 6 기록 → 다음 할 일 제안 → 승인
         await go(pg4, '#log'); await pg4.click('[data-work="관수"]'); await pg4.fill('#lgNote', '1번 밭 관수')
@@ -137,7 +163,7 @@ async def main():
         t = await pg4.inner_text('#view')
         ok(8, not await pg4.evaluate('window.__x'), 'XSS 실행 안 됨')
         ok(8, '010-****-****' in t and '******-*******' in t and '1234-5678' not in t, '전화·주민번호 가림')
-        ok(8, '이 질문과 관련된 선배 노하우' in t and '첫서리' not in t or '최저기온' in t, '질문에 관련 노하우 표시')
+        ok(8, '이 질문과 관련된 선배 노하우' in t and ('첫서리' in t or '최저기온' in t), '질문에 관련 노하우 표시')
         await pg4.fill('[data-cin]', '저도 궁금해요'); await pg4.click('[data-csend]'); await pg4.wait_for_timeout(200)
         ok(8, '저도 궁금해요' in await pg4.inner_text('#view'), '댓글 등록')
         before = await pg4.locator('[data-like]').first.inner_text(); await pg4.locator('[data-like]').first.click(); await pg4.wait_for_timeout(150)
@@ -175,5 +201,6 @@ async def main():
         rs = [r for r in results if r[0] == n]
         print(f'#{n}: {sum(r[1] for r in rs)}/{len(rs)} 통과' + ''.join(f'\n   FAIL {r[2]}' for r in rs if not r[1]))
     print('TOTAL', len(results) - len(fails), '/', len(results))
+    raise SystemExit(1 if fails else 0)
 
 asyncio.run(main())
