@@ -65,10 +65,13 @@ def _image(value) -> tuple[bytes | None, str]:
 
 
 @app.route(route="health", methods=["GET"])
-def health(req: func.HttpRequest) -> func.HttpResponse:
-    return _resp({"ok": True, "agent": agents.enabled(), "models": [agents.DIAG_MODEL, agents.JUDGE_MODEL],
-                  "classifier": classifier.META["model"],
-                  "plan_models": [planner.FAST_MODEL, planner.PLAN_MODEL], "region": planner.REGION["name"]})
+async def health(req: func.HttpRequest) -> func.HttpResponse:
+    out = {"ok": True, "agent": agents.enabled(), "models": [agents.DIAG_MODEL, agents.JUDGE_MODEL],
+           "classifier": classifier.META["model"],
+           "plan_models": [planner.FAST_MODEL, planner.PLAN_MODEL], "region": planner.REGION["name"]}
+    if req.params.get("check") == "agent":  # 실제로 Copilot 런타임을 띄워 모델 목록까지 확인한다
+        out["agentCheck"] = await agents.self_check() if agents.enabled() else {"ok": False, "tokenKind": "missing"}
+    return _resp(out)
 
 
 @app.route(route="diagnose", methods=["POST"])

@@ -11,8 +11,10 @@ Microsoft Agent Framework 에이전트 두 개를 순서대로 실행한다.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import time
 import os
 import pathlib
 import re
@@ -105,6 +107,41 @@ def _json(text: str) -> dict[str, Any]:
 def _client() -> CopilotClient:
     os.environ.setdefault("COPILOT_CLI_EXTRACT_DIR", "/tmp/copilot-cli")
     return CopilotClient(github_token=os.environ["COPILOT_GITHUB_TOKEN"], base_directory="/tmp/copilot-home", log_level="error")
+
+
+_SECRET = re.compile(r"(github_pat_|gh[pousr]_)[A-Za-z0-9_]+")
+
+
+def _token_kind() -> str:
+    t = os.environ.get("COPILOT_GITHUB_TOKEN", "").strip()
+    for p in ("github_pat_", "ghp_", "gho_", "ghu_", "ghs_"):
+        if t.startswith(p):
+            return p.rstrip("_")
+    return "unknown" if t else "missing"
+
+
+async def self_check() -> dict[str, Any]:
+    """배포 환경 점검: Copilot 런타임 시작 → 모델 목록 조회. 토큰 값은 응답에 넣지 않는다."""
+    t0, stage = time.time(), "create_client"
+    out: dict[str, Any] = {"tokenKind": _token_kind()}
+    client = None
+    try:
+        client = _client()
+        stage = "start_runtime"
+        await asyncio.wait_for(client.start(), timeout=40)
+        stage = "list_models"
+        ids = [getattr(m, "id", str(m)) for m in await asyncio.wait_for(client.list_models(), timeout=20)]
+        out.update(ok=True, models=ids[:50], diagModelAvailable=DIAG_MODEL in ids, judgeModelAvailable=JUDGE_MODEL in ids)
+    except Exception as ex:  # 원인 파악용: 단계와 오류 종류만 돌려준다
+        out.update(ok=False, stage=stage, error=_SECRET.sub("[가림]", f"{type(ex).__name__}: {ex}")[:400])
+    finally:
+        if client is not None:
+            try:
+                await client.stop()
+            except Exception:
+                pass
+    out["ms"] = round((time.time() - t0) * 1000)
+    return out
 
 
 def _allow_own_tools(request: Any, _invocation: Any) -> Any:
