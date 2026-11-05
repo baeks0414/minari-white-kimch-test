@@ -14,6 +14,7 @@ import base64
 import binascii
 import json
 import logging
+import re
 import time
 
 import azure.functions as func
@@ -25,6 +26,8 @@ import planner
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 log = logging.getLogger("farm-api")
 MAX_BODY = 3_000_000
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_DIAGNOSE_BODY = ((MAX_IMAGE_BYTES + 2) // 3) * 4 + 200_000
 MIME = {"jpeg": "image/jpeg", "jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 
 
@@ -32,9 +35,9 @@ def _resp(obj, status=200):
     return func.HttpResponse(json.dumps(obj, ensure_ascii=False), status_code=status, mimetype="application/json")
 
 
-def _body(req: func.HttpRequest):
+def _body(req: func.HttpRequest, max_body: int = MAX_BODY):
     raw = req.get_body() or b""
-    if len(raw) > MAX_BODY:
+    if len(raw) > max_body:
         raise ValueError("too large")
     return json.loads(raw or b"{}")
 
@@ -44,13 +47,21 @@ def _image(value) -> tuple[bytes | None, str]:
     if not value:
         return None, ""
     head, _, data = str(value).partition(",")
-    kind = head.split("/")[-1].split(";")[0].lower() if head.startswith("data:image/") else "jpeg"
+    head = head.strip().lower()
+    match = re.fullmatch(r"data:image/(jpeg|jpg|png|webp);base64", head)
+    if not match:
+        raise ValueError("unsupported image")
+    kind = match.group(1)
     if kind not in MIME or not data:
         raise ValueError("unsupported image")
     try:
-        return base64.b64decode(data, validate=True), MIME[kind]
+        decoded = base64.b64decode(data, validate=True)
     except (binascii.Error, ValueError) as ex:
         raise ValueError("bad image") from ex
+    if len(decoded) > MAX_IMAGE_BYTES:
+        raise ValueError("image too large")
+    classifier.load_image(decoded)
+    return decoded, MIME[kind]
 
 
 @app.route(route="health", methods=["GET"])
@@ -63,10 +74,12 @@ def health(req: func.HttpRequest) -> func.HttpResponse:
 @app.route(route="diagnose", methods=["POST"])
 async def diagnose(req: func.HttpRequest) -> func.HttpResponse:
     try:
-        b = _body(req)
+        b = _body(req, max_body=MAX_DIAGNOSE_BODY)
         image, mime = _image(b.get("image"))
-    except ValueError:
-        return _resp({"error": "사진은 3MB 이하 JPG·PNG·WEBP만 보낼 수 있어요"}, 400)
+    except ValueError as ex:
+        if str(ex) == "too large":
+            return _resp({"error": "진단 요청은 10MB 이하 이미지만 보낼 수 있어요"}, 400)
+        return _resp({"error": "이미지는 JPG·PNG·WEBP 형식의 정상 파일만 가능하고 10MB 이하여야 해요"}, 400)
     crop = str(b.get("crop", ""))[:20]
     symptoms = [str(s)[:40] for s in (b.get("symptoms") or [])][:20]
     stats = b.get("stats") if isinstance(b.get("stats"), dict) else None
@@ -94,6 +107,10 @@ async def diagnose(req: func.HttpRequest) -> func.HttpResponse:
             log.exception("diagnose agent failed: %s", ex)
     if classified:
         out = agents.model_only(crop, classified)
+        # 모델도 확신이 낮으면 앱 규칙으로 한 번 더 대체한다.
+        # (증상 체크 기반 안내를 유지하고 화면을 멈추지 않기 위함)
+        if out.get("hard"):
+            return _resp({"error": "model uncertain"}, 503)
         out["classifier"] = classified
         out["agentError"] = "agent not configured" if not agents.enabled() else "agent failed"
         return _resp(out)

@@ -66,6 +66,25 @@ async function tryApi(path, body, ms = 8000) {
   } catch { return null; }
 }
 
+// /api/diagnose 전용: 4xx(입력 오류)는 사용자에게 안내하고, 5xx/타임아웃만 규칙 fallback으로 넘긴다.
+async function tryDiagnoseApi(body, ms = 95000) {
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+    const r = await fetch('/api/diagnose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
+    clearTimeout(t);
+    const isJson = (r.headers.get('content-type') || '').includes('json');
+    const j = isJson ? await r.json() : null;
+    if (r.ok) return j;
+    if (r.status >= 500) return null; // 기존 동작 유지: 서버 실패는 앱 규칙으로 fallback
+    const msg = typeof j?.error === 'string' && j.error.trim()
+      ? j.error.trim()
+      : '입력을 다시 확인해 주세요.';
+    return { error: msg, status: r.status };
+  } catch {
+    return null; // 타임아웃/네트워크 실패는 기존처럼 fallback
+  }
+}
+
 /* ---------- 저장소 (이 브라우저에만 저장) ---------- */
 const KEY = 'baekkimchi.farm.v3'; // v3: 토마토 시연 농가, 청도 날씨
 let S = null;
@@ -229,7 +248,7 @@ function viewPlan() {
   const t = todayStr();
   const tasks = r.tasks || [];
   const banner = r.source === 'agent'
-    ? `<span class="tag ai">에이전트 ${(r.agents || []).length}개 · ${esc(Object.values(r.models || {}).filter((v, i, a) => a.indexOf(v) === i).join(', '))}</span> <span class="small muted">${Math.round((r.ms || 0) / 100) / 10}초 · 날씨 ${esc(r.weather?.region || REGION.name)} ${esc(r.weather?.fetchedAt ? fmtTime(r.weather.fetchedAt) : '')} 기준</span>`
+    ? `<span class="tag ai">에이전트 ${(r.agents || []).length}개 · ${esc(Object.values(r.models || {}).filter((v, i, a) => a.indexOf(v) === i).join(', '))}</span> <span class="tag warn">AI 추정 · 전문가 확인 필요</span> <span class="small muted">${Math.round((r.ms || 0) / 100) / 10}초 · 날씨 ${esc(r.weather?.region || REGION.name)} ${esc(r.weather?.fetchedAt ? fmtTime(r.weather.fetchedAt) : '')} 기준</span>`
     : '<span class="tag warn">에이전트 연결 전</span> <span class="small muted">앱 안 규칙으로 만든 계획이에요</span>';
   return `<div class="card big" id="plan" style="margin-top:18px">${head}
     <div class="row wrap-it" style="margin-bottom:8px">${banner}</div>
@@ -503,18 +522,21 @@ function renderDxResult(r) {
   const fromAgent = r.source === 'agent';
   const fromModel = r.source === 'model';
   const sourceTag = `<span class="tag ${fromAgent ? 'ai' : 'warn'}">${fromAgent ? 'AI 에이전트' : fromModel ? '사진 분류 모델' : '앱 규칙 기반'}</span>`;
+  const caution = (fromAgent || fromModel) ? '<span class="tag warn">AI 추정 · 전문가 확인 필요</span>' : '';
   const sourceText = fromAgent
     ? `Copilot 에이전트: 진단(사진 + 분류 모델 도구) → 검증 (${esc((r.models || []).join(', '))})`
     : fromModel ? 'AI 에이전트에 연결하지 못해 사진 분류 모델 결과만 보여 드려요. 에이전트의 사진 판단·검증은 빠졌어요.'
     : 'AI 에이전트 응답이 없어 앱 안의 규칙으로 정리했어요.';
   if (r.hard) return `
     <div class="card"><h3>판단하기 어려워요 ${sourceTag}</h3>
+      ${caution ? `<p class="small" style="margin:4px 0 0">${caution}</p>` : ''}
       <p class="small muted">${sourceText}</p>
       <p class="small">특징이 부족하거나 사진이 흐려 후보를 정하기 어려워요.</p>
       <ul class="small"><li>가까이, 밝은 곳에서 다시 찍어 주세요.</li><li>잎은 앞면과 뒷면을 모두 찍어 주세요.</li><li>계속 모르겠으면 청도군 농업기술센터에 사진을 보여 주세요.</li></ul>
       <a href="${PEST_LINKS.ncpms}" target="_blank" rel="noopener">국가농작물병해충관리시스템 도감 보기</a></div>`;
   return `
   <h2>의심 후보 ${sourceTag}</h2>
+  ${caution ? `<p class="small" style="margin:4px 0 0">${caution}</p>` : ''}
   <p class="small muted" style="margin-top:-6px">${sourceText}</p>
   ${r.warning ? `<p class="tag warn">${esc(r.warning)}</p>` : ''}
   ${r.observed ? `<div class="card tight small"><b>에이전트가 사진에서 본 특징</b><p style="margin:4px 0">${esc(r.observed)}</p></div>` : ''}
@@ -564,10 +586,18 @@ function bindDiagnose(root) {
       : ['사진 특징 정리', '도감 비교 + 날씨·이번 달 발생정보 확인 (동시)', '의심 후보 정리', '검증 — 근거 부족 후보 제외'];
     const box = $('#dxSteps', root);
     const draw = (k) => box.innerHTML = `<div class="card tight"><div class="steps">${steps.map((s, i) => `<div class="step ${i < k ? 'done' : i === k ? 'run' : ''}"><span class="dot"></span>${s}</div>`).join('')}</div></div>`;
-    const apiP = tryApi('/api/diagnose', { crop: dx.crop, symptoms: [...dx.picked], stats: dx.stats, image: withPhoto ? dx.photo : undefined }, 95000);
+    const apiP = tryDiagnoseApi({ crop: dx.crop, symptoms: [...dx.picked], stats: dx.stats, image: withPhoto ? dx.photo : undefined }, 95000);
     for (let k = 0; k < steps.length - 1; k++) { draw(k); await new Promise((r) => setTimeout(r, 450)); }
     draw(steps.length - 1);
     const api = await apiP;
+    if (api && api.error) {
+      dx.running = false;
+      box.innerHTML = '';
+      $('#runDx', root).disabled = false;
+      $('#runDx', root).textContent = '증상 확인하기';
+      toast(api.error);
+      return;
+    }
     dx.result = api && api.top ? api : localDiagnose();
     dx.running = false; render();
   };
@@ -814,13 +844,14 @@ function viewCommunity() {
   if (q) posts = posts.filter((p) => (p.title + p.body + p.author).includes(q));
   posts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const ar = cm.askResult;
+  const askFromAgent = Array.isArray(ar) && ar.some((x) => x.agent);
   return `
   <h1>농부 커뮤니티</h1>
   <p class="sub">선배 농부의 노하우를 모으고, 새내기가 물으면 관련 노하우를 찾아 드려요.</p>
   <div class="card">
     <label class="f" for="askIn" style="margin-top:0">선배 노하우에게 물어보기</label>
     <div class="row"><input type="text" id="askIn" maxlength="120" value="${esc(cm.ask)}" placeholder="예: 서리 오기 전에 뭘 해야 하나요?"><button class="btn primary" id="askBtn">찾기</button></div>
-    ${ar ? (ar.length ? `<div class="summary"><b>관련 노하우 ${ar.length}개</b> <span class="tag ai">AI 정리 · 원글 문장 그대로</span>
+    ${ar ? (ar.length ? `<div class="summary"><b>관련 노하우 ${ar.length}개</b> <span class="tag ${askFromAgent ? 'ai' : 'warn'}">${askFromAgent ? 'AI 정리 · 원글 문장 그대로' : '규칙 기반 정리'}</span>${askFromAgent ? ' <span class="tag warn">AI 추정 · 전문가 확인 필요</span>' : ''}
       <ol>${ar.map((x) => `<li>${esc(x.quote || firstSentence(x.p.body))} <a href="#community" data-openpost="${x.p.id}">— ${esc(x.p.author)}</a></li>`).join('')}</ol>
       <div class="small muted">원글에 없는 내용은 덧붙이지 않았어요. 농약·안전 관련 내용은 공식 자료로 다시 확인하세요.</div></div>`
       : `<div class="summary">관련 노하우를 찾지 못했어요. <button class="btn sm" id="askPost">질문 글로 올리기</button></div>`) : ''}
@@ -855,7 +886,7 @@ function renderPost(p) {
     <h3><button class="btn ghost" style="padding:0;min-height:0;border:0;text-align:left;font-size:16px" data-openpost="${p.id}">${esc(p.title)}</button></h3>
     <div class="meta">${p.senior ? '<span class="tag badge-senior">선배</span>' : ''}${esc(p.author)} · ${esc(fmtTime(p.createdAt))} · 댓글 ${cs.length}</div>
     ${open ? `<p style="white-space:pre-wrap">${esc(p.body)}</p>
-      ${rel.length ? `<div class="summary"><b>이 질문과 관련된 선배 노하우</b> <span class="tag ai">AI 정리</span><ol>${rel.map((x) => `<li>${esc(firstSentence(x.p.body))} — ${esc(x.p.author)}</li>`).join('')}</ol></div>` : ''}
+      ${rel.length ? `<div class="summary"><b>이 질문과 관련된 선배 노하우</b> <span class="tag warn">규칙 기반 정리</span><ol>${rel.map((x) => `<li>${esc(firstSentence(x.p.body))} — ${esc(x.p.author)}</li>`).join('')}</ol></div>` : ''}
       ${cs.map((c) => `<div class="comment">${c.senior ? '<span class="tag badge-senior">선배</span>' : ''}<b>${esc(c.author)}</b> <span class="small muted">${esc(fmtTime(c.createdAt))}</span><div style="white-space:pre-wrap">${esc(c.body)}</div></div>`).join('')}
       <div class="row" style="margin-top:10px"><input type="text" data-cin="${p.id}" maxlength="500" placeholder="${p.type === 'question' ? '답변 남기기' : '댓글 남기기'}"><button class="btn sm primary" data-csend="${p.id}">등록</button></div>` : `<p class="small muted" style="margin:6px 0 0">${esc(firstSentence(p.body))}</p>`}
     <div class="row" style="margin-top:10px">
