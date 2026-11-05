@@ -107,9 +107,12 @@ async def diagnose(req: func.HttpRequest) -> func.HttpResponse:
             log.exception("diagnose agent failed: %s", ex)
     if classified:
         out = agents.model_only(crop, classified)
-        # 모델도 확신이 낮으면 앱 규칙으로 한 번 더 대체한다.
-        # (증상 체크 기반 안내를 유지하고 화면을 멈추지 않기 위함)
-        if out.get("hard"):
+        # 모델 후보가 하나도 없고 사용자가 증상을 골랐을 때만 앱 규칙(증상 체크)으로 대체한다.
+        # 확신이 낮은 후보는 "확신 낮음"과 다시 찍기 안내를 붙여 그대로 보여 준다.
+        poor_photo = bool(stats and (stats.get("blurry") or stats.get("tooDark")))
+        if poor_photo and out.get("uncertain"):  # 흐리거나 어두운 사진은 확신 낮은 후보를 내지 않는다
+            out["hard"] = True
+        if out.get("hard") and symptoms:
             return _resp({"error": "model uncertain"}, 503)
         out["classifier"] = classified
         out["agentError"] = "agent not configured" if not agents.enabled() else "agent failed"

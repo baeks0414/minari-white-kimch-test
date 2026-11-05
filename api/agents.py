@@ -197,9 +197,17 @@ def model_only(crop: str, classified: dict) -> dict[str, Any]:
             continue
         top.append({"p": _public(p), "conf": conf, "ev": [f"분류 모델: {p['name']} 확률 {t['prob']:.0%}"]})
     not_tomato = classified["tomatoShare"] < 0.5
-    hard = not top or not_tomato or classified["top"][0]["prob"] < 0.4
-    return {"top": top[:3], "dropped": dropped, "hard": hard, "source": "model",
-            "warning": "토마토 잎이 아닐 수 있어요" if not_tomato else ""}
+    uncertain = not_tomato or (bool(classified["top"]) and classified["top"][0]["prob"] < 0.5)
+    if uncertain:  # 확신이 낮아도 후보는 보여 주고, 확신은 모두 "낮음"으로 낮춘다
+        for c in top:
+            c["conf"] = "낮음"
+    warn = []
+    if not_tomato:
+        warn.append("토마토 잎이 아닐 수 있어요.")
+    if uncertain:
+        warn.append("분류 모델의 확신이 낮아요. 잎을 가까이, 밝은 곳에서 앞·뒷면을 다시 찍으면 더 정확해요.")
+    return {"top": top[:3], "dropped": dropped, "hard": not top, "source": "model", "uncertain": uncertain,
+            "warning": " ".join(warn)}
 
 
 async def ask(question: str, posts: list[dict]) -> dict[str, Any]:
