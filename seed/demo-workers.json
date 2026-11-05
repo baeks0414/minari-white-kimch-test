@@ -45,7 +45,7 @@
         "w2"
       ],
       "fieldId": "field-2",
-      "work": "반시 수확·선별",
+      "work": "토마토 수확·선별",
       "start": "08:00",
       "end": "17:00",
       "breakMin": 60
@@ -56,7 +56,7 @@
         "w1"
       ],
       "fieldId": "field-1",
-      "work": "반시 수확",
+      "work": "토마토 수확",
       "start": "08:00",
       "end": "16:00",
       "breakMin": 60

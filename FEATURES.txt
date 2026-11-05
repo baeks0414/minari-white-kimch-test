@@ -1,0 +1,76 @@
+미나리 기능 정리 (2026-11-05 기준)
+=================================
+
+세 기능 모두 feat/farm-copilot-webapp(de82242) 위에서 만들었다.
+이 베이스는 main과 이력이 이어지지 않는다(공통 조상 없음).
+
+
+1. 농작물 병해충 진단 (사진 한 장)
+---------------------------------
+브랜치 : feature/pest-diagnosis  (= claude/nice-ptolemy-jx5gq0, 커밋 aecd481)
+상태   : 완료, 푸시됨. PR 없음.
+
+- 토마토 잎 사진을 6가지로 구분: 병해 5종(세균성 점무늬병, 겹둥근무늬병, 역병,
+  잎곰팡이병, 황화잎말림바이러스) + 건강한 잎
+- api/classifier.py: MobileNetV2(PlantVillage) ONNX 모델. 상위 3개 결과와 확률을 돌려준다.
+- 진단 에이전트가 사진을 직접 보고 classify_leaf_photo 도구를 호출한다.
+  검증 에이전트도 같은 사진을 확인한다.
+- 우리가 만든 함수 도구만 허용. 두 에이전트가 CopilotClient 하나를 함께 쓴다.
+- 에이전트가 없거나 실패하면 분류 모델 결과로 대체한다(source: model).
+- 병해별 증상, 관리법, 출처: api/reference.json, data.js
+- 정답 라벨이 있는 샘플 사진 6장(PlantVillage CC0, PlantDoc CC BY 4.0).
+  화면에서 정답과 비교해 볼 수 있다.
+- 실제 환경 사진 성능(PlantDoc 69장): 1순위 30.4%, 상위 3개 안 62.3%.
+  화면과 TRD에 그대로 적었다.
+- API: POST /api/diagnose
+- 테스트: e2e 11개 시나리오, 55/55 통과
+
+
+2. 날씨 기반 AI 작업 계획
+------------------------
+브랜치 : feature/weather-plan  (= claude/optimistic-cerf-az12w7, 커밋 21a2cad)
+상태   : 완료, 푸시됨. PR 없음.
+
+- 실시간 날씨와 영농 기록으로 7일치 할 일을 제안한다.
+- api/planner.py: 날씨 에이전트와 밭 에이전트를 Agent Framework ConcurrentBuilder로
+  동시에 실행하고, 결과를 계획 에이전트가 받는다.
+  - 함수 도구 3개: get_weather_outlook, get_field_records, get_crop_guide
+  - 도구 호출을 trace로 기록한다.
+  - 우리 함수 도구만 허용(on_permission_request, available_tools=custom:*)
+- 서버가 근거를 검사해 아래 제안은 뺀다:
+  없는 근거 id, 7일 밖 날짜, 없는 밭, 약제 희석 표현, 중복 일정
+- 시간 제한 40초(SWA 관리형 Functions 제한보다 짧게). 실패하면 503, 화면은 규칙 기반 안내로 대체.
+- API: POST /api/plan  (의존성 agent-framework-orchestrations 추가)
+- 날씨 기준 지역: 전남 해남군 실시간 예보 (region.js)
+- 시연 농가: 토마토 비닐하우스 2동. 규칙 안내도 토마토 기준(보온, 물 주기, 곰팡이병 살피기, 강풍)
+- 오늘 화면의 AI 작업 계획 카드: 진행 단계, 근거, 검증에서 뺀 제안, 실행 기록,
+  고른 것만 일정에 추가(승인), 실패 시 규칙 대체
+- 테스트: e2e 12개 시나리오 57/57, 계획 에이전트 오프라인 테스트 10/10
+
+※ 해남군을 기준 지역으로 쓴다. AGENTS.md의 청도군 기준과 다르니 팀이 확인해야 한다.
+
+
+3. 농기계 추천 및 대여 안내
+--------------------------
+브랜치 : feature/farm-machinery  (= claude/practical-fermi-tvb7td, 커밋 098e18f)
+상태   : 완료, 푸시됨. PR 없음.
+
+- 데이터: 청도군청 농기계 임대사업소 CSV(2026-09-03 기준, 3곳 47종 812대)
+  → seed/machinery-cheongdo.json (변환기 tools/machinery_csv_to_json.py, 원본 seed/raw/)
+- 밭·면적·작업에 맞는 추천 기종을 사업소가 실제로 가진 기종 이름으로 안내한다. 내 작물 작업을 먼저 보여 준다.
+- 기종마다 가장 가까운 보유 사업소, 대수, 전화, 길찾기. 내 위치 기준 정렬, 기종 찾기
+- 추천을 누르면 예약 칸이 자동으로 채워진다. 진단 결과에서 방제 장비로 바로 간다.
+- 한글 입력이 끊기지 않도록 검색 결과 영역만 다시 그린다.
+- 테스트: e2e 7번 시나리오(10개 확인 항목)를 실제 자료 기준으로 갱신
+
+
+최종 합본
+--------
+브랜치 final: 병해충 + 날씨 + 농기계를 모두 합치고 충돌을 정리했다.
+테스트: e2e 1~12번 64/64 통과, 계획 에이전트 오프라인 10/10 통과.
+13번(토마토 샘플 → 실제 분류 모델)은 진단 API 서버가 떠 있어야 해서 여기서는 돌리지 못했다.
+정리한 충돌 파일:
+PRD.md, TRD.md, api/function_app.py, api/requirements.txt, app.js,
+docs/WEBAPP.md, seed/demo-profile.json, tests/e2e_qa.py
+(시연 농가는 날씨 쪽 토마토 하우스 2동으로 통일. 병해충 e2e는 13번 시나리오로 옮김.
+ 농기계 7번 테스트는 바뀐 밭(2동 하우스 0.15ha → 경운기)에 맞춤)

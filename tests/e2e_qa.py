@@ -38,7 +38,9 @@ LIVE = {
     "daily": {"time": ["2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10", "2026-11-11"],
               "weather_code": [61, 63, 61, 2, 0, 3, 1, 0, 0], "temperature_2m_max": [15, 14, 15, 13, 12, 12, 13, 13, 14],
               "temperature_2m_min": [9, 9, 10, 5, -1, 0, 6, 2, 3], "precipitation_sum": [8, 6, 12, 0, 0, 0, 0, 0, 0],
-              "precipitation_probability_max": [90, 80, 100, 20, 0, 30, 10, 10, 0]}}
+              "precipitation_probability_max": [90, 80, 100, 20, 0, 30, 10, 10, 0],
+              "relative_humidity_2m_mean": [92, 90, 95, 70, 60, 65, 70, 60, 60],
+              "wind_speed_10m_max": [4, 5, 6, 12, 5, 4, 3, 3, 4]}}
 
 async def page(b, vp=(390, 844), live=None, dark=False, block_storage=False):
     ctx = await b.new_context(viewport={'width': vp[0], 'height': vp[1]}, color_scheme='dark' if dark else 'light')
@@ -79,17 +81,18 @@ async def main():
         t = await pg.inner_text('#view')
         ok(2, '서리 대비' in t, '서리 카드 제목')
         ok(2, '관수 보류' in t, '비 온 뒤 관수 보류 안내')
-        ok(2, '탄저병' in t, '비 온 뒤 탄저병 확인 안내')
+        ok(2, '잿빛곰팡이병' in t, '습한 날씨 뒤 곰팡이병 예찰 안내')
+        ok(2, '전남 해남군' in t, '기준 지역 표시')
         ok(2, '실시간' in t and 'Open-Meteo' in t, '실시간 출처 표시')
         n0 = await pg.locator('[data-addtask]').count()
         await pg.locator('[data-addtask]').first.click(); await pg.wait_for_timeout(200)
-        t = await pg.inner_text('#view'); ok(2, '덮개·보온 준비' in t.split('다가오는 일정')[1], '승인한 일정이 다가오는 일정에 표시')
+        t = await pg.inner_text('#view'); ok(2, '보온 커튼·덮개 점검' in t.split('다가오는 일정')[1], '승인한 일정이 다가오는 일정에 표시')
         ok(2, n0 >= 3, f'안내 일정 버튼 수 {n0}')
         ok(2, await pg.locator('[data-addtask]').count() == n0 - 1 and '일정에 추가됨' in t, '추가한 안내는 다시 추가 못 함(중복 방지)')
-        ok(2, '덮개·보온 준비' in (await pg.inner_text('.tl')), '다음에 할 일 카드에 실제 일정')
+        ok(2, '보온 커튼·덮개 점검' in (await pg.inner_text('.tl')), '다음에 할 일 카드에 실제 일정')
 
         # 3 감 탄저병 진단 → 기록·일정
-        await go(pg, '#diagnose')
+        await go(pg, '#diagnose'); await pg.click('[data-crop="감(반시)"]')
         for s in ['fruit_black_sunken', 'pink_spore']: await pg.click(f'[data-sym={s}]')
         await pg.click('#runDx'); await pg.wait_for_selector('#saveDx', timeout=8000)
         t = await pg.inner_text('#view')
@@ -107,12 +110,12 @@ async def main():
         pga = await page(b, live='fail')
         AG = {"top": [{"p": {"name": "탄저병", "kind": "병", "feature": "f", "care": ["c"]}, "conf": "중간", "ev": ["분홍 포자"]}], "dropped": [{"p": {"name": "둥근무늬낙엽병"}, "reason": "근거 부족"}], "hard": False, "source": "agent", "models": ["gpt-5", "claude-sonnet-4"]}
         await pga.route('**/api/diagnose', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps(AG)))
-        await go(pga, '#diagnose'); await pga.click('[data-sym=pink_spore]'); await pga.click('#runDx'); await pga.wait_for_selector('#saveDx', timeout=8000)
+        await go(pga, '#diagnose'); await pga.click('[data-crop="감(반시)"]'); await pga.click('[data-sym=pink_spore]'); await pga.click('#runDx'); await pga.wait_for_selector('#saveDx', timeout=8000)
         t = await pga.inner_text('#view')
         ok(3, 'AI 에이전트' in t and 'Copilot 에이전트' in t and '앱 규칙 기반' not in t and '근거 부족' in t and await pga.locator('#view h2 .tag.ai').count() == 1, '실제 에이전트 결과와 검증 사유 표시')
 
         # 4 아무것도 안 고르고 진단 / 흐린 사진
-        pg4 = await page(b, live='fail'); await go(pg4, '#diagnose')
+        pg4 = await page(b, live='fail'); await go(pg4, '#diagnose'); await pg4.click('[data-crop="감(반시)"]')
         await pg4.click('#runDx'); await pg4.wait_for_timeout(300)
         ok(4, await pg4.locator('#dxSteps .steps').count() == 0, '입력 없으면 진단 안 함')
         await pg4.set_input_files('#photo', files=[{'name': 'g.png', 'mimeType': 'image/png', 'buffer': gray_png()}]); await pg4.wait_for_timeout(600)
@@ -149,7 +152,18 @@ async def main():
 
         # 7 농기계 임대: 잘못된 날짜 / 정상
         await go(pg4, '#machine'); await pg4.fill('#mcArea', '2'); await pg4.press('#mcArea', 'Enter'); await pg4.dispatch_event('#mcArea', 'change'); await pg4.wait_for_timeout(200)
-        await pg4.click('[data-mw="방제"]'); t = await pg4.inner_text('#view'); ok(7, '고속분무기' in t, '2ha 방제 → 고속분무기')
+        await pg4.click('[data-mw="방제"]'); t = await pg4.inner_text('#view'); ok(7, '추천 동력살분무기' in t, '2ha 방제 → 동력살분무기 (청도 보유 기종)')
+        ok(7, '054-371-6522' in t and '원정3길 49' in t, '사업소 주소·전화 (공공데이터)')
+        ok(7, '3곳 · 47종 812대' in t, '보유 현황 합계')
+        await pg4.click('[data-mf="field-2"]'); await pg4.click('[data-mw="밭갈이·로터리"]'); t = await pg4.inner_text('#view')
+        ok(7, "추천 경운기(작업기 포함)" in t, "하우스 0.15ha 밭갈이 → 경운기")
+        await pg4.click('[data-mw="대추 수확·선별"]'); t = await pg4.inner_text('#view')
+        ok(7, '대추선별기' in t and '산동분소' in t, '대추선별기는 산동분소에만')
+        await pg4.click('[data-mpick="대추선별기"]'); await pg4.wait_for_timeout(200)
+        ok(7, await pg4.input_value('#rvMachine') == '대추선별기' and '산동분소' in await pg4.eval_on_selector('#rvOffice', 'e => e.value'), '추천 → 예약 칸 채움')
+        await pg4.fill('#mcQ', '파쇄'); await pg4.wait_for_timeout(100); t = await pg4.inner_text('#mcFound')
+        ok(7, '목재파쇄기' in t and '작물줄기파쇄기' in t, '기종 찾기')
+        await pg4.fill('#mcQ', '헬리콥터'); await pg4.wait_for_timeout(100); ok(7, '없는 기종' in await pg4.inner_text('#mcFound'), '없는 기종 안내')
         await pg4.fill('#rvFrom', '2026-11-10'); await pg4.fill('#rvTo', '2026-11-08'); await pg4.click('#rvSave'); await pg4.wait_for_timeout(200)
         ok(7, '날짜를 확인' in await pg4.inner_text('#toast'), '반납일이 앞서면 막음')
         await pg4.fill('#rvTo', '2026-11-11'); await pg4.click('#rvSave'); await pg4.wait_for_timeout(300)
@@ -180,6 +194,59 @@ async def main():
         await pg4.reload(); await pg4.wait_for_selector('.tabs button[aria-current]'); await go(pg4, '#log')
         ok(9, '흙 수분 확인' in await pg4.inner_text('#view'), '새로고침 후 데이터 유지')
 
+        # 11 AI 작업 계획: 에이전트 응답 → 근거·검증 표시 → 고른 것만 일정 추가
+        PLAN = {"source": "agent", "agents": ["weather", "field", "planner"], "models": {"weather": "gpt-5-mini", "field": "gpt-5-mini", "planner": "gpt-5-mini"},
+                "ms": 23100, "weather": {"region": "전남 해남군", "fetchedAt": "2026-11-05T14:30+09:00"},
+                "tasks": [{"title": "하우스 보온 커튼 점검", "date": "2026-11-06", "fieldId": "field-1", "category": "보온", "priority": "높음", "reason": "11/7 저온 예보",
+                           "evidence": [{"id": "W:2026-11-07:min_c", "kind": "weather", "label": "11/7 최저기온 -1℃"}]},
+                          {"title": "잎 뒷면 곰팡이 예찰", "date": "2026-11-05", "fieldId": "field-2", "category": "병해 예찰", "priority": "보통", "reason": "습도 높음",
+                           "evidence": [{"id": "W:2026-11-05:humidity", "kind": "weather", "label": "11/5 평균 습도 95%"}]}],
+                "dropped": [{"title": "약제 500배 희석 살포", "reason": "약제 사용량·희석 배수 표현 포함"}],
+                "trace": [{"ms": 900, "agent": "weather", "type": "tool", "name": "get_weather_outlook", "result": "근거 40개"}]}
+        pgp = await page(b, live=LIVE); seen = {}
+        async def plan_route(r):
+            seen['body'] = json.loads(r.request.post_data or '{}'); await r.fulfill(status=200, content_type='application/json', body=json.dumps(PLAN, ensure_ascii=False))
+        await pgp.route('**/api/plan', plan_route)
+        await pgp.click('#plRun'); await pgp.wait_for_selector('#plAdd', timeout=10000)
+        t = await pgp.inner_text('#plan')
+        ok(11, 'AI 제안' in t and '에이전트 3개' in t, '에이전트 결과·AI 표시')
+        ok(11, '11/7 최저기온 -1℃' in t and '1동 하우스' in t, '근거 값과 밭 이름 표시')
+        ok(11, '검증에서 뺀 제안 1개' in t and '희석' not in t.split('검증에서 뺀')[0], '뺀 제안은 따로, 본문에 약제 표현 없음')
+        ok(11, len(seen.get('body', {}).get('fields', [])) == 2 and seen['body'].get('logs'), '밭·기록을 API로 보냄')
+        await pgp.click('#plAdd'); await pgp.wait_for_timeout(200)
+        ok(11, '하우스 보온 커튼 점검' not in (await pgp.inner_text('.tl')), '고르지 않으면 추가 안 함')
+        await pgp.check('[data-pick="0"]'); await pgp.click('#plAdd'); await pgp.wait_for_timeout(300)
+        t = await pgp.inner_text('#view')
+        ok(11, '하우스 보온 커튼 점검' in t.split('다가오는 일정')[1] and '잎 뒷면 곰팡이 예찰' not in t.split('다가오는 일정')[1], '고른 것만 일정에 추가')
+        ok(11, '일정에 있음' in await pgp.inner_text('#plan'), '추가한 할 일 표시')
+        ok(11, await overflow(pgp) <= 0, '계획 카드 가로 넘침 없음')
+        await pgp.screenshot(path=SP + '11-plan.png', full_page=True)
+
+        # 12 AI 작업 계획: API 실패 → 규칙으로 대신, 표시
+        pgf = await page(b, live=LIVE)
+        await pgf.route('**/api/plan', lambda r: r.fulfill(status=503, content_type='application/json', body='{"error":"agent failed"}'))
+        await pgf.click('#plRun'); await pgf.wait_for_selector('#plAdd', timeout=10000)
+        t = await pgf.inner_text('#plan')
+        ok(12, '에이전트 연결 전' in t and '보온 커튼·덮개 점검' in t, '규칙 계획으로 대체하고 표시')
+        ok(12, not pgf.errs, f'오류 없음 {pgf.errs}')
+
+        # 13 토마토 샘플 사진 → 서버 분류 모델(실제 ONNX) → 후보·관리법·출처
+        pgt = await page(b, live=LIVE); await go(pgt, '#diagnose')
+        ok(13, await pgt.locator('[data-sample]').count() == 6, '검증된 샘플 사진 6장')
+        await pgt.click('[data-sample="late_blight"]'); await pgt.wait_for_selector('.drop img')
+        t = await pgt.inner_text('#view'); ok(13, 'PlantDoc' in t and 'CC BY 4.0' in t, '샘플 출처·라이선스 표시')
+        await pgt.click('#runDx'); await pgt.wait_for_selector('#saveDx', timeout=30000)
+        t = await pgt.inner_text('#view')
+        ok(13, '사진 분류 모델 결과' in t and '역병' in t, '분류 모델 결과에 역병')
+        ok(13, '일치' in t and '불일치' not in t, '샘플 정답 라벨과 1순위 일치')
+        ok(13, '관리법 출처' in t and '1순위 30%' in t, '관리법 출처와 실측 정확도 표시')
+        ct = ' '.join(await pgt.locator('.cand').all_inner_texts()); ok(13, ct and not any(k in ct for k in ['희석', 'ml', '살포량']), '약제 처방 없음')
+        await pgt.click('[data-sample="healthy"]'); await pgt.wait_for_selector('.drop img'); await pgt.click('#runDx'); await pgt.wait_for_selector('#saveDx', timeout=30000)
+        ok(13, '건강한 잎' in await pgt.inner_text('#view'), '건강한 잎 판별')
+        await pgt.click('#saveDx'); await pgt.wait_for_timeout(400)
+        ok(13, '같은 잎 다시 찍어 비교하기' in await pgt.inner_text('#view'), '건강하면 일주일 뒤 다시 찍기 일정')
+        ok(13, not pgt.errs, f'페이지 오류 없음 {pgt.errs}')
+
         # 10 데스크톱·다크 모드·접근성
         pgd = await page(b, vp=(1440, 1000), live=LIVE)
         ok(10, await overflow(pgd) <= 0, '데스크톱 가로 넘침 없음')
@@ -197,7 +264,7 @@ async def main():
         await b.close()
 
     fails = [r for r in results if not r[1]]
-    for n in range(1, 11):
+    for n in range(1, 14):
         rs = [r for r in results if r[0] == n]
         print(f'#{n}: {sum(r[1] for r in rs)}/{len(rs)} 통과' + ''.join(f'\n   FAIL {r[2]}' for r in rs if not r[1]))
     print('TOTAL', len(results) - len(fails), '/', len(results))

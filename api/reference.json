@@ -1,220 +1,228 @@
 {
  "pests": [
   {
-   "id": "anthracnose",
-   "crop": "감(반시)",
-   "name": "탄저병",
-   "kind": "병",
+   "id": "tomato_early_blight",
+   "crop": "토마토",
+   "name": "겹둥근무늬병",
+   "kind": "병 (곰팡이)",
+   "label": "Tomato with Early Blight",
    "keys": [
-    "fruit_black_sunken",
-    "pink_spore",
-    "shoot_black"
+    "t_concentric",
+    "t_yellow_halo",
+    "t_lower_first"
    ],
    "wetBoost": true,
-   "feature": "열매·새 가지에 검고 움푹한 둥근 반점이 생기고, 습하면 분홍빛 포자 덩어리가 보입니다.",
+   "feature": "아래쪽 오래된 잎부터 갈색~검은 반점이 생기고, 커지면서 동심원(과녁) 무늬가 나타납니다. 반점 둘레가 노랗게 변하는 경우가 많습니다.",
    "care": [
-    "병든 열매·가지를 따서 밭 밖에서 처리하세요.",
-    "가지가 빽빽하면 솎아 통풍을 좋게 하세요.",
-    "비가 이어진 뒤 확산 여부를 2~3일 간격으로 확인하세요."
+    "병든 아래 잎을 따서 밭 밖에서 처리하세요.",
+    "잎이 오래 젖어 있지 않게 포기 밑동에 물을 주세요(점적관수 권장).",
+    "비료가 부족하면 세력이 약해져 잘 걸려요. 시비 기록을 확인하세요.",
+    "가지과(토마토·고추·감자·가지)가 아닌 작물로 돌려짓기하면 줄일 수 있어요."
+   ],
+   "sources": [
+    {
+     "title": "Univ. of Florida IPM — Early Blight",
+     "url": "https://ipm.ifas.ufl.edu/pdfs/Early_Blight.pdf"
+    },
+    {
+     "title": "Oklahoma State Univ. Extension — Early Blight of Tomato",
+     "url": "https://extension.okstate.edu/programs/digital-diagnostics/plant-diseases/early-blight-of-tomato.html"
+    },
+    {
+     "title": "국가농작물병해충관리시스템 도감 (등록 약제·최신 정보 확인)",
+     "url": "https://ncpms.rda.go.kr"
+    }
    ]
   },
   {
-   "id": "circular_leaf_spot",
-   "crop": "감(반시)",
-   "name": "둥근무늬낙엽병",
-   "kind": "병",
+   "id": "tomato_late_blight",
+   "crop": "토마토",
+   "name": "역병",
+   "kind": "병 (난균)",
+   "label": "Tomato with Late Blight",
    "keys": [
-    "leaf_round_brown",
-    "dark_margin",
-    "early_leaf_drop"
+    "t_water_soaked",
+    "t_white_mold_under"
    ],
-   "feature": "잎에 둥근 갈색 반점이 생기고 가장자리가 진해지며, 잎이 일찍 떨어집니다.",
+   "wetBoost": true,
+   "feature": "잎에 경계가 불분명한 물에 젖은 듯한 병반이 생겨 빠르게 넓어지고, 서늘하고 습하면 흰 곰팡이(균사·포자)가 보입니다.",
    "care": [
-    "떨어진 잎을 모아 처리해 내년 전염원을 줄이세요.",
-    "배수가 잘 되게 하고 나무 세력을 관리하세요."
+    "병든 잎·줄기는 바로 제거해 밭 밖에서 처리하세요(태우거나 깊이 묻기).",
+    "시설은 환기를 충분히 해 과습을 막고, 물 빠짐을 좋게 하세요.",
+    "서늘하고 비가 이어지면 2~3일 간격으로 번지는지 확인하세요."
+   ],
+   "sources": [
+    {
+     "title": "농촌진흥청 웹진 (병해 관리)",
+     "url": "https://www.rda.go.kr/webzine/2020/10/sub2-4.html"
+    },
+    {
+     "title": "국가농작물병해충관리시스템 도감 (등록 약제·최신 정보 확인)",
+     "url": "https://ncpms.rda.go.kr"
+    }
    ]
   },
   {
-   "id": "angular_leaf_spot",
-   "crop": "감(반시)",
-   "name": "모무늬낙엽병",
-   "kind": "병",
+   "id": "tomato_leaf_mold",
+   "crop": "토마토",
+   "name": "잎곰팡이병",
+   "kind": "병 (곰팡이)",
+   "label": "Tomato with Leaf Mold",
    "keys": [
-    "leaf_angular",
-    "early_leaf_drop"
+    "t_upper_yellow",
+    "t_olive_mold_under"
    ],
-   "feature": "잎맥에 둘러싸인 각진 갈색 반점이 생기고 잎이 떨어집니다.",
+   "wetBoost": true,
+   "feature": "잎 윗면에 경계가 흐린 노란 무늬가 생기고, 뒷면에 회백색~올리브색 벨벳 같은 곰팡이가 빽빽하게 핍니다. 시설 재배에서 흔합니다.",
    "care": [
-    "떨어진 잎을 모아 처리하세요.",
-    "통풍이 잘 되게 가지를 정리하세요."
+    "환기·제습으로 잎이 젖어 있는 시간을 줄이세요(잎 결로 9시간 이상에서 발생이 늘었다는 연구가 있어요).",
+    "아래쪽 빽빽한 잎을 정리해 통풍을 좋게 하세요.",
+    "흑색 비닐이나 짚으로 멀칭하면 발생을 줄일 수 있어요.",
+    "병든 잎은 따서 밭 밖에서 처리하세요."
+   ],
+   "sources": [
+    {
+     "title": "토마토 재배에서 점무늬병 및 잎곰팡이병 발생 예측 및 방제력 연구 (KoreaScience)",
+     "url": "https://koreascience.kr/article/JAKO202232055720394.page"
+    },
+    {
+     "title": "유기농 토마토 잎곰팡이병 등 방제 연구 (KoreaScience)",
+     "url": "https://koreascience.kr/article/JAKO201209857779038.page"
+    },
+    {
+     "title": "국가농작물병해충관리시스템 도감 (등록 약제·최신 정보 확인)",
+     "url": "https://ncpms.rda.go.kr"
+    }
    ]
   },
   {
-   "id": "powdery_mildew",
-   "crop": "감(반시)",
-   "name": "흰가루병",
-   "kind": "병",
+   "id": "tomato_tylcv",
+   "crop": "토마토",
+   "name": "황화잎말림바이러스병 (TYLCV)",
+   "kind": "바이러스 (담배가루이가 옮김)",
+   "label": "Tomato Yellow Leaf Curl Virus",
    "keys": [
-    "white_powder"
+    "t_curl_up_yellow",
+    "t_stunt",
+    "t_whitefly"
    ],
-   "feature": "잎 뒷면에 흰 가루 같은 곰팡이가 생깁니다.",
+   "feature": "새 잎이 작아지고 잎 끝이 노랗게 변하면서 위로 말립니다. 심하면 생육이 멈추고 열매가 잘 달리지 않습니다. 담배가루이가 옮깁니다.",
    "care": [
-    "심한 잎은 제거하고 통풍을 좋게 하세요.",
-    "질소 비료를 지나치게 주지 않았는지 기록을 확인하세요."
+    "바이러스는 치료 약이 없어요. 의심 포기는 뿌리째 뽑아 비닐봉지에 밀폐해 버리세요.",
+    "끈끈이트랩으로 담배가루이를 살피고, 밀도가 낮을 때 등록 약제로 방제하세요(작용 기작이 다른 약제를 번갈아).",
+    "주변 잡초와 방치된 토마토·고추 같은 기주 식물을 정리하세요.",
+    "확진은 농업기술센터에 진단을 맡기세요."
+   ],
+   "sources": [
+    {
+     "title": "농촌진흥청 — 토마토황화잎말림바이러스 방제 자료 (농사로)",
+     "url": "https://www.nongsaro.go.kr/cms_contents/136/88822_MF_ATTACH_01.pdf"
+    },
+    {
+     "title": "국가농작물병해충관리시스템 도감 (등록 약제·최신 정보 확인)",
+     "url": "https://ncpms.rda.go.kr"
+    }
    ]
   },
   {
-   "id": "fruit_moth",
-   "crop": "감(반시)",
-   "name": "감꼭지나방",
-   "kind": "해충",
+   "id": "tomato_bacterial_spot",
+   "crop": "토마토",
+   "name": "세균점무늬병",
+   "kind": "병 (세균)",
+   "label": "Tomato with Bacterial Spot",
    "keys": [
-    "calyx_hole",
-    "fruit_drop_early"
+    "t_small_dark_spots",
+    "t_yellow_halo",
+    "t_fruit_scab"
    ],
-   "feature": "애벌레가 꼭지 부근을 파고들어 구멍과 똥이 보이고, 열매가 익기 전에 떨어집니다.",
+   "wetBoost": true,
+   "feature": "잎에 지름 수 mm의 작고 검은 물집 같은 반점이 많이 생기고, 열매에는 거칠고 볼록한 갈색 점이 생깁니다. 비·물 튀김으로 퍼집니다.",
    "care": [
-    "떨어진 열매와 피해 열매를 모아 처리하세요.",
-    "겨울에 거친 껍질을 긁어 월동 애벌레를 줄이는 방법이 알려져 있습니다 (도감 확인)."
+    "잎이 젖어 있을 때는 작업하지 마세요(세균이 손·도구로 옮겨요).",
+    "위에서 뿌리는 물주기를 피하고, 쓴 도구는 소독하세요.",
+    "병든 잎은 따서 밭 밖에서 처리하세요.",
+    "건전한 종자·모종을 쓰는 것이 가장 중요해요. 세균병은 발병 후보다 예방이 효과적이에요."
+   ],
+   "sources": [
+    {
+     "title": "Ball Seed — Identify and treat bacterial leaf spot (Xanthomonas)",
+     "url": "https://www.ballseed.com/Literature/TechDocs/Document/1469/identify-and-treat-bacterial-leaf-spot-xanthomonas"
+    },
+    {
+     "title": "국가농작물병해충관리시스템 도감 (등록 약제·최신 정보 확인)",
+     "url": "https://ncpms.rda.go.kr"
+    }
    ]
   },
   {
-   "id": "mealybug",
-   "crop": "감(반시)",
-   "name": "깍지벌레류",
-   "kind": "해충",
-   "keys": [
-    "white_cottony",
-    "sooty"
-   ],
-   "feature": "가지·열매에 흰 솜이나 껍질 같은 벌레가 붙고, 배설물 때문에 그을음이 생깁니다.",
+   "id": "tomato_healthy",
+   "crop": "토마토",
+   "name": "건강한 잎 (뚜렷한 증상 없음)",
+   "kind": "정상",
+   "label": "Healthy Tomato Plant",
+   "keys": [],
+   "feature": "병반, 변색, 곰팡이, 벌레 흔적이 뚜렷하게 보이지 않습니다.",
    "care": [
-    "피해 가지를 정리하고, 겨울 전정 때 붙어 있는 가지를 제거하세요.",
-    "발생 범위를 사진으로 기록해 두세요."
-   ]
-  },
-  {
-   "id": "aphid",
-   "crop": "미나리",
-   "name": "진딧물",
-   "kind": "해충",
-   "keys": [
-    "small_insects",
-    "sticky",
-    "leaf_curl"
+    "지금처럼 관리하면서 일주일 뒤 같은 잎을 다시 찍어 비교해 보세요.",
+    "아래쪽 오래된 잎과 잎 뒷면도 함께 살펴보세요."
    ],
-   "feature": "잎·줄기에 작은 벌레가 무리 지어 있고, 잎이 끈적이거나 오그라듭니다.",
-   "care": [
-    "발생한 포기 주변을 먼저 확인하고 범위를 기록하세요.",
-    "물 관리와 잡초 정리로 서식처를 줄이세요."
-   ]
-  },
-  {
-   "id": "rust",
-   "crop": "미나리",
-   "name": "녹병 의심",
-   "kind": "병",
-   "keys": [
-    "orange_pustule"
-   ],
-   "feature": "잎에 노랑·주황색 가루가 나오는 작은 돌기가 생깁니다.",
-   "care": [
-    "병든 잎을 걷어 내고, 확산 여부를 확인하세요.",
-    "도감에서 미나리 녹병 증상과 비교해 보세요."
-   ]
-  },
-  {
-   "id": "physio",
-   "crop": "미나리",
-   "name": "생리장해·물 관리 문제",
-   "kind": "환경",
-   "keys": [
-    "yellowing",
-    "rot_base"
-   ],
-   "feature": "병해충 없이 수온·수위·양분 문제로 잎이 누렇게 되거나 밑동이 무를 수 있습니다.",
-   "care": [
-    "수위와 물 흐름을 확인하세요.",
-    "고인 물이 썩지 않게 순환시키세요.",
-    "계속되면 농업기술센터에 문의하세요."
+   "sources": [
+    {
+     "title": "국가농작물병해충관리시스템 도감 (등록 약제·최신 정보 확인)",
+     "url": "https://ncpms.rda.go.kr"
+    }
    ]
   }
  ],
  "symptoms": {
-  "감(반시)": [
+  "토마토": [
    {
-    "id": "fruit_black_sunken",
-    "label": "열매에 검고 움푹한 반점"
+    "id": "t_concentric",
+    "label": "잎에 동심원(과녁) 무늬 갈색 반점"
    },
    {
-    "id": "pink_spore",
-    "label": "반점 위에 분홍빛 가루·덩어리"
+    "id": "t_yellow_halo",
+    "label": "반점 둘레가 노랗게 변함"
    },
    {
-    "id": "shoot_black",
-    "label": "새 가지가 검게 변함"
+    "id": "t_lower_first",
+    "label": "아래쪽 오래된 잎부터 생김"
    },
    {
-    "id": "leaf_round_brown",
-    "label": "잎에 둥근 갈색 반점"
+    "id": "t_water_soaked",
+    "label": "물에 젖은 듯한 큰 회녹색·갈색 병반"
    },
    {
-    "id": "dark_margin",
-    "label": "반점 가장자리에 진한 테"
+    "id": "t_white_mold_under",
+    "label": "습할 때 병반 둘레·뒷면에 흰 곰팡이"
    },
    {
-    "id": "leaf_angular",
-    "label": "잎맥 사이 각진 갈색 반점"
+    "id": "t_upper_yellow",
+    "label": "잎 윗면에 경계가 흐린 노란 무늬"
    },
    {
-    "id": "early_leaf_drop",
-    "label": "잎이 일찍 많이 떨어짐"
+    "id": "t_olive_mold_under",
+    "label": "잎 뒷면에 올리브·회갈색 벨벳 같은 곰팡이"
    },
    {
-    "id": "white_powder",
-    "label": "잎 뒷면에 흰 가루"
+    "id": "t_curl_up_yellow",
+    "label": "새 잎이 작아지고 노랗게 위로 말림"
    },
    {
-    "id": "calyx_hole",
-    "label": "꼭지 부근 구멍·벌레 똥"
+    "id": "t_stunt",
+    "label": "생육이 멈추고 키가 작아짐"
    },
    {
-    "id": "fruit_drop_early",
-    "label": "익기 전 열매가 떨어짐"
+    "id": "t_whitefly",
+    "label": "잎 뒷면에 작은 흰 날벌레(가루이)"
    },
    {
-    "id": "white_cottony",
-    "label": "가지·열매에 흰 솜 같은 벌레"
+    "id": "t_small_dark_spots",
+    "label": "작고 검은 물집 같은 반점(지름 수 mm)"
    },
    {
-    "id": "sooty",
-    "label": "잎·열매가 검은 그을음처럼 더러워짐"
-   }
-  ],
-  "미나리": [
-   {
-    "id": "small_insects",
-    "label": "잎·줄기에 작은 벌레 무리"
-   },
-   {
-    "id": "sticky",
-    "label": "잎이 끈적거림"
-   },
-   {
-    "id": "leaf_curl",
-    "label": "잎이 오그라듦"
-   },
-   {
-    "id": "orange_pustule",
-    "label": "잎에 노랑·주황 가루 돌기"
-   },
-   {
-    "id": "yellowing",
-    "label": "잎 전체가 누렇게 변함"
-   },
-   {
-    "id": "rot_base",
-    "label": "밑동이 물러지고 냄새"
+    "id": "t_fruit_scab",
+    "label": "열매에 거칠고 볼록한 갈색 점"
    }
   ]
  }

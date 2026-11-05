@@ -1,4 +1,5 @@
-import { FARM, WORK_TYPES, SYMPTOMS, PESTS, PEST_LINKS, MACHINE_RULES, RENTAL, SEED_POSTS, SEED_COMMENTS, TOPICS } from './data.js';
+import { REGION } from './region.js';
+import { FARM, WORK_TYPES, SYMPTOMS, PESTS, PEST_LINKS, MACHINE_GUIDE, RENTAL_ASK, SEED_POSTS, SEED_COMMENTS, TOPICS, SAMPLES } from './data.js';
 
 /* ---------- 픽토그램 (선 아이콘, 글자색을 따름) ---------- */
 const ICONS = {
@@ -66,21 +67,21 @@ async function tryApi(path, body, ms = 8000) {
 }
 
 /* ---------- 저장소 (이 브라우저에만 저장) ---------- */
-const KEY = 'baekkimchi.farm.v1';
+const KEY = 'baekkimchi.farm.v2'; // v2: 토마토 시연 농가, 해남 날씨
 let S = null;
 function load() { try { S = JSON.parse(localStorage.getItem(KEY)); } catch { S = null; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { toast('저장 공간이 부족해요. 사진 저장을 줄여 주세요.'); } }
 
 async function initState() {
   load();
-  if (S && S.v === 1) return;
+  if (S && S.v === 2) return;
   let profile = null, logs = [], programs = [];
   try { profile = await getJSON('seed/demo-profile.json'); } catch {}
   try { logs = (await getJSON('seed/demo-logs.json')).logs || []; } catch {}
   try { programs = (await getJSON('seed/programs.json')).programs || []; } catch {}
   S = {
-    v: 1,
-    profile: profile || { nickname: '청도 새내기 농부', birthYear: 1994, independentFarmingYears: 2, fields: [{ id: 'field-1', name: '1번 밭', crop: '감(반시)', areaHa: 0.3 }], totalAreaHa: 0.3 },
+    v: 2,
+    profile: profile || { nickname: '새내기 토마토 농부', birthYear: 1994, independentFarmingYears: 2, region: REGION.name, fields: [{ id: 'field-1', name: '1동 하우스', crop: '토마토', facility: '비닐하우스', areaHa: 0.2 }], totalAreaHa: 0.2 },
     programs,
     logs: logs.map((l) => ({ id: uid(), date: l.date, fieldId: l.fieldId, work: l.work, hours: l.hours, note: l.note, example: true })),
     tasks: [],
@@ -96,91 +97,172 @@ function addTask(t) { if (hasTask(t.title, t.date)) return false; S.tasks.push({
 const fieldName = (id) => (S.profile.fields.find((f) => f.id === id) || {}).name || id || '';
 const fieldCrop = (id) => (S.profile.fields.find((f) => f.id === id) || {}).crop || '';
 
-/* ---------- 날씨 (Open-Meteo 실시간, 실패 시 기상청 자료 스냅샷) ---------- */
+/* ---------- 날씨 (Open-Meteo 실시간, 기준 지역 한 곳) ---------- */
 const WX = { 0: '맑음', 1: '대체로 맑음', 2: '구름 조금', 3: '흐림', 45: '안개', 48: '안개', 51: '이슬비', 53: '이슬비', 55: '이슬비', 56: '어는 비', 57: '어는 비', 61: '비', 63: '비', 65: '많은 비', 66: '어는 비', 67: '어는 비', 71: '눈', 73: '눈', 75: '많은 눈', 77: '눈', 80: '소나기', 81: '소나기', 82: '강한 소나기', 85: '눈', 86: '눈', 95: '뇌우', 96: '뇌우', 99: '뇌우' };
 let weather = null;
+let GUIDE = {}; // 작물 참고 기준 (seed/crop-guide.json, 서버 api/crop-guide.json과 같은 내용)
 
 async function loadWeather() {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${FARM.lat}&longitude=${FARM.lon}` +
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${REGION.lat}&longitude=${REGION.lon}` +
     '&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m' +
-    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,relative_humidity_2m_mean,wind_speed_10m_max' +
     '&past_days=3&forecast_days=7&timezone=Asia%2FSeoul&wind_speed_unit=ms';
+  try { GUIDE = await getJSON('seed/crop-guide.json'); } catch { GUIDE = {}; }
   try {
-    const j = await getJSON(url);
-    const days = j.daily.time.map((d, i) => ({
-      date: d, code: j.daily.weather_code[i], sky: WX[j.daily.weather_code[i]] || '-',
-      min: j.daily.temperature_2m_min[i], max: j.daily.temperature_2m_max[i],
-      rain: j.daily.precipitation_sum[i] ?? 0, pop: j.daily.precipitation_probability_max[i] ?? null,
+    const j = await getJSON(url, 8000);
+    const dd = j.daily; const at = (k, i) => (dd[k] ? dd[k][i] : null);
+    const days = dd.time.map((d, i) => ({
+      date: d, code: at('weather_code', i), sky: WX[at('weather_code', i)] || '-',
+      min: at('temperature_2m_min', i), max: at('temperature_2m_max', i),
+      rain: at('precipitation_sum', i) ?? 0, pop: at('precipitation_probability_max', i),
+      hum: at('relative_humidity_2m_mean', i), wind: at('wind_speed_10m_max', i),
     }));
     const t = todayStr();
     weather = {
       source: 'live', fetchedAt: new Date().toISOString(),
-      sourceName: 'Open-Meteo 실시간 예보 (청도군 좌표)', sourceUrl: 'https://open-meteo.com',
+      sourceName: `Open-Meteo 실시간 예보 (${REGION.name} 좌표)`, sourceUrl: 'https://open-meteo.com',
       current: { t: j.current.temperature_2m, h: j.current.relative_humidity_2m, sky: WX[j.current.weather_code] || '-', wind: j.current.wind_speed_10m },
       past: days.filter((d) => d.date < t), days: days.filter((d) => d.date >= t),
     };
-  } catch {
-    try {
-      const s = await getJSON('seed/forecast-cheongdo-20261105.json');
-      weather = {
-        source: 'snapshot', fetchedAt: s.baseTime, sourceName: s.sourceNote, sourceUrl: s.sourceUrl,
-        current: { t: s.today.tempC, h: s.today.humidityPct, sky: s.today.sky, wind: s.today.windMs },
-        past: [],
-        days: [{ date: s.today.date, sky: s.today.sky, min: s.today.minC, max: s.today.maxC, rain: 10, pop: 100 },
-          ...s.days.map((d) => ({ date: d.date, sky: d.pm || d.am, min: d.minC, max: d.maxC, rain: 0, pop: Math.max(d.amRainPct, d.pmRainPct) }))],
-      };
-    } catch { weather = null; }
-  }
+  } catch { weather = null; } // 다른 지역 스냅샷으로 대신하지 않는다 (지역이 달라 오해를 부름)
 }
 
-/* ---------- 오늘 할 일 판단 (근거 포함) ---------- */
+/* ---------- 오늘 할 일 판단 (규칙, 근거 포함) — 에이전트가 없을 때도 쓰는 기본 안내 ---------- */
 function buildAdvice() {
   const out = [];
-  if (!weather) return out;
+  if (!weather || !weather.days.length) return out;
   const today = weather.days[0];
   const recentRain = weather.past.slice(-2).reduce((a, d) => a + (d.rain || 0), 0) + (today?.rain || 0);
   const crops = new Set(S.profile.fields.map((f) => f.crop));
+  const tomato = crops.has('토마토');
+  const th = (GUIDE['토마토'] || {}).thresholds || { coldInjuryC: 5, nightLowC: 10, humidPct: 85, windMs: 10, rainMm: 10 };
+  const src = '농사로 일반 기준';
+  const next5 = weather.days.slice(0, 5);
 
-  // 서리·저온
-  const frost = weather.days.slice(0, 5).find((d) => d.min <= 1);
-  if (frost) {
-    const prep = frost.date === today.date ? frost.date : addDays(frost.date, -1);
-    out.push({ level: 'warn', icon: 'snow', title: `${md(frost.date)}(${dow(frost.date)}) 최저 ${frost.min}℃ 예보 — 덮개·보온 준비`,
-      why: `예보 최저기온 ${frost.min}℃로 서리 가능성이 있어요. 남은 반시는 먼저 수확하고, 어린나무 밑동 보온을 권장해요.`,
-      task: { title: '덮개·보온 준비, 남은 반시 먼저 수확', date: prep } });
+  // 저온·서리 → 하우스 보온
+  const cold = next5.reduce((a, d) => (d.min != null && (a == null || d.min < a.min) ? d : a), null);
+  if (cold && cold.min <= th.coldInjuryC) {
+    const prep = cold.date === today.date ? cold.date : addDays(cold.date, -1);
+    out.push({ level: 'warn', icon: 'snow', title: `${md(cold.date)}(${dow(cold.date)}) 최저 ${cold.min}℃ 예보 — 하우스 보온 준비`,
+      why: `예보 최저기온 ${cold.min}℃. 토마토는 5℃ 아래에서 저온 피해 위험이 있어요(${src}). 전날 저녁 보온 커튼·덮개와 측창 닫힘을 확인하세요.`,
+      task: { title: '하우스 보온 커튼·덮개 점검', date: prep } });
+  } else if (tomato && cold && cold.min <= th.nightLowC) {
+    out.push({ level: 'info', icon: 'snow', title: `밤 기온 ${cold.min}℃ — 저녁에 측창 닫기`,
+      why: `${md(cold.date)} 최저 ${cold.min}℃. 밤 10℃ 아래에서는 생육이 늦어질 수 있어요(${src}).`,
+      task: { title: '해 지기 전 측창·출입문 닫기', date: today.date } });
   }
   // 관수
   const lastWater = S.logs.filter((l) => /관수|물/.test(l.work)).map((l) => l.date).sort().pop();
   if (recentRain >= 5 || (today?.pop ?? 0) >= 60) {
-    out.push({ level: 'ok', icon: 'drop', title: '관수 보류',
-      why: `최근 강수 ${recentRain.toFixed(1)}mm${today?.pop != null ? `, 오늘 강수확률 ${today.pop}%` : ''}. 흙이 젖어 있으면 물을 주지 않아도 돼요.` });
-  } else if (crops.has('감(반시)')) {
-    out.push({ level: 'info', icon: 'drop', title: '흙 상태 보고 관수 판단',
-      why: `최근 강수 ${recentRain.toFixed(1)}mm로 적어요.${lastWater ? ` 마지막 물 관리 기록: ${md(lastWater)}.` : ''} 손으로 흙을 쥐어 보고 마른 경우에만 주세요.`,
-      task: { title: '감나무 밑 흙 수분 확인', date: today.date } });
+    out.push({ level: 'ok', icon: 'drop', title: '관수 보류 · 양 줄이기',
+      why: `최근 강수 ${recentRain.toFixed(1)}mm${today?.pop != null ? `, 오늘 강수확률 ${today.pop}%` : ''}. 흐리고 비 오는 날은 물을 덜 써요. 흙 수분을 보고 판단하세요.` });
+  } else if (tomato) {
+    out.push({ level: 'info', icon: 'drop', title: '흙 수분 보고 관수 판단',
+      why: `최근 강수 ${recentRain.toFixed(1)}mm.${lastWater ? ` 마지막 관수 기록: ${md(lastWater)}.` : ''} 수분이 갑자기 바뀌면 열매가 터지기 쉬워요(${src}).`,
+      task: { title: '하우스 흙 수분 확인', date: today.date } });
   }
-  // 병 확산 위험
-  if (recentRain >= 10 && crops.has('감(반시)')) {
-    out.push({ level: 'warn', icon: 'search', title: '비 온 뒤 탄저병 열매 확인',
-      why: `최근 비 ${recentRain.toFixed(1)}mm. 습한 날이 이어지면 탄저병 반점이 늘 수 있어요. 의심 열매는 사진 진단으로 확인하세요.`,
-      task: { title: '탄저병 의심 열매 확인·제거', date: addDays(today.date, 1) }, link: '#diagnose' });
+  // 습한 날씨 → 곰팡이병 예찰
+  const humid = next5.find((d) => (d.hum ?? 0) >= th.humidPct || (d.pop ?? 0) >= 70);
+  if (tomato && (recentRain >= th.rainMm || humid)) {
+    out.push({ level: 'warn', icon: 'search', title: '습한 날씨 — 잿빛곰팡이병·잎곰팡이병 예찰',
+      why: `${humid ? `${md(humid.date)} ${humid.hum != null ? `평균 습도 ${humid.hum}%` : `강수확률 ${humid.pop}%`}` : `최근 비 ${recentRain.toFixed(1)}mm`}. 습한 날이 이어지면 곰팡이병이 늘기 쉬워요(${src}). 오전에 환기하고 의심 잎은 사진 진단으로 확인하세요.`,
+      task: { title: '잎 뒷면·열매 곰팡이 예찰', date: addDays(today.date, 1) }, link: '#diagnose' });
   }
-  // 미나리
-  if (crops.has('미나리')) {
-    const cold = weather.days.slice(0, 3).some((d) => d.min <= 3);
-    out.push({ level: 'info', icon: 'sprout', title: '미나리 수위·물길 확인',
-      why: cold ? '기온이 내려가요. 수위를 조금 높이고 물이 고이지 않게 흐름을 확인하세요.' : '물이 고이지 않게 들어오고 나가는 물길을 확인하세요.',
-      task: { title: '미나리 수위·물길 확인', date: today.date } });
-  }
-  // 수확 후 밑거름
-  const harvested = S.logs.some((l) => /수확/.test(l.work));
-  const fertilized = S.logs.some((l) => /시비|비료|거름/.test(l.work));
-  if (harvested && !fertilized) {
-    out.push({ level: 'info', icon: 'flask', title: '수확 후 밑거름 계획 — 토양검정 먼저',
-      why: '수확 기록은 있고 시비 기록은 없어요. 양은 토양검정 결과로 흙토람 비료사용처방서를 받아 정하세요. 앱이 양을 정하지 않아요.',
-      task: { title: '농업기술센터 토양검정 신청', date: addDays(today.date, 2) } });
+  // 강풍 → 시설 점검
+  const windy = next5.find((d) => (d.wind ?? 0) >= th.windMs);
+  if (windy) {
+    out.push({ level: 'warn', icon: 'info', title: `${md(windy.date)} 강한 바람 ${windy.wind}m/s 예보 — 하우스 점검`,
+      why: '강한 바람이 예보되면 비닐·끈·출입문을 미리 점검해요.',
+      task: { title: '하우스 비닐·끈 점검', date: windy.date === today.date ? today.date : addDays(windy.date, -1) } });
   }
   return out;
+}
+
+/* ---------- AI 작업 계획 (날씨 에이전트 ∥ 밭 에이전트 → 계획 에이전트 → 서버 근거 검증) ---------- */
+const pl = { running: false, result: null, picked: new Set(), t0: 0, timer: null };
+const PL_STEPS = [['weather', '날씨 에이전트 — 실시간 예보에서 작업 위험 찾기'], ['field', '밭 에이전트 — 기록·작물 기준 확인'],
+  ['planner', '계획 에이전트 — 7일 할 일 정리'], ['server', '근거 확인 — 실제 자료에 없는 근거는 제외']];
+const PRI = { 높음: 'danger', 보통: 'warn', 낮음: '' };
+
+function localPlan() { // 에이전트를 쓸 수 없을 때: 같은 형식으로 규칙 안내를 보여 준다
+  const f = S.profile.fields[0];
+  return {
+    source: 'rules',
+    tasks: buildAdvice().filter((a) => a.task).map((a) => ({ title: a.task.title, date: a.task.date, fieldId: f?.id, category: '기타', priority: a.level === 'warn' ? '높음' : '보통', reason: a.why, evidence: [] })),
+    dropped: [], risks: [], trace: [],
+  };
+}
+
+async function runPlan(root) {
+  pl.running = true; pl.result = null; pl.t0 = Date.now(); render();
+  const tick = () => { const el = $('#plTime'); if (el) el.textContent = `${Math.round((Date.now() - pl.t0) / 1000)}초`; };
+  pl.timer = setInterval(tick, 1000);
+  const body = {
+    fields: S.profile.fields,
+    logs: S.logs.slice(-30).map(({ id, date, fieldId, work, note }) => ({ id, date, fieldId, work, note })),
+    tasks: S.tasks.filter((t) => !t.done).map(({ title, date }) => ({ title, date })),
+  };
+  const api = await tryApi('/api/plan', body, 45000);
+  clearInterval(pl.timer);
+  pl.result = api && Array.isArray(api.tasks) ? api : localPlan();
+  pl.picked = new Set();
+  pl.running = false; render();
+}
+
+function viewPlan() {
+  const r = pl.result;
+  const head = `
+    <div class="card-head"><div class="grow"><p class="kicker">02 · AI 작업 계획 <span class="tag ai">AI 제안</span></p>
+      <div class="card-title" style="font-size:clamp(20px,2.2vw,28px)">이번 주 할 일을 계획해 볼까요?</div>
+      <p class="muted" style="margin:0">${esc(REGION.name)} 실시간 예보와 내 영농 기록을 함께 보고, 근거가 있는 일만 제안해요.</p></div>
+      <div class="badge-ic g" aria-hidden="true">${I('list', 26)}</div></div>`;
+  if (pl.running) {
+    return `<div class="card big" id="plan" style="margin-top:18px">${head}
+      <div class="steps" aria-live="polite">${PL_STEPS.map(([, s], i) => `<div class="step ${i < 2 ? 'run' : ''}"><span class="dot"></span>${s}${i < 2 ? ' (동시 실행)' : ''}</div>`).join('')}</div>
+      <p class="small muted">진행 중 · <span id="plTime">0초</span> · 보통 20~40초 걸려요</p></div>`;
+  }
+  if (!r) {
+    return `<div class="card big" id="plan" style="margin-top:18px">${head}
+      <button class="btn primary lg block" id="plRun">이번 주 할 일 계획 세우기 ${I('arrow', 20)}</button>
+      <div class="dotline">제안만 해요 · 일정 추가는 직접 고른 것만</div></div>`;
+  }
+  const t = todayStr();
+  const tasks = r.tasks || [];
+  const banner = r.source === 'agent'
+    ? `<span class="tag ai">에이전트 ${(r.agents || []).length}개 · ${esc(Object.values(r.models || {}).filter((v, i, a) => a.indexOf(v) === i).join(', '))}</span> <span class="small muted">${Math.round((r.ms || 0) / 100) / 10}초 · 날씨 ${esc(r.weather?.region || REGION.name)} ${esc(r.weather?.fetchedAt ? fmtTime(r.weather.fetchedAt) : '')} 기준</span>`
+    : '<span class="tag warn">에이전트 연결 전</span> <span class="small muted">앱 안 규칙으로 만든 계획이에요</span>';
+  return `<div class="card big" id="plan" style="margin-top:18px">${head}
+    <div class="row wrap-it" style="margin-bottom:8px">${banner}</div>
+    ${tasks.length ? `<ul class="list">${tasks.map((x, i) => {
+      const added = hasTask(x.title, x.date);
+      return `<li class="row" style="align-items:flex-start">
+        <input type="checkbox" data-pick="${i}" ${added ? 'disabled checked' : pl.picked.has(i) ? 'checked' : ''} aria-label="${esc(x.title)} 선택">
+        <div class="grow"><b>${esc(x.title)}</b> ${x.priority ? `<span class="tag ${PRI[x.priority] || ''}">${esc(x.priority)}</span>` : ''} ${added ? `<span class="tag ok">${I('check', 14)} 일정에 있음</span>` : ''}
+          <div class="small muted">${x.date === t ? '오늘' : `${md(x.date)}(${dow(x.date)})`} · ${esc(fieldName(x.fieldId))} · ${esc(x.category || '')}</div>
+          ${x.reason ? `<div class="why">이유: ${esc(x.reason)}</div>` : ''}
+          ${(x.evidence || []).length ? `<div class="small" style="margin-top:4px">${x.evidence.map((e) => `<span class="tag">${I(e.kind === 'weather' ? 'drop' : e.kind === 'record' ? 'book' : 'leaf', 14)} ${esc(e.label)}</span>`).join(' ')}</div>` : ''}
+        </div></li>`;
+    }).join('')}</ul>` : '<div class="empty">이번 주에는 따로 챙길 일이 없어요.</div>'}
+    <div class="row wrap-it" style="margin-top:10px">
+      ${tasks.length ? '<button class="btn primary" id="plAdd">고른 할 일 일정에 추가</button>' : ''}
+      <button class="btn ghost" id="plRun">다시 계획하기</button>
+    </div>
+    ${(r.dropped || []).length ? `<details style="margin-top:10px"><summary class="small">검증에서 뺀 제안 ${r.dropped.length}개</summary><ul class="small">${r.dropped.map((d) => `<li>${esc(d.title)} — ${esc(d.reason)}</li>`).join('')}</ul></details>` : ''}
+    ${(r.trace || []).length ? `<details style="margin-top:6px"><summary class="small">에이전트 실행 기록</summary><ol class="small">${r.trace.map((e) => `<li>${(e.ms / 1000).toFixed(1)}초 · ${esc(e.agent)} · ${e.type === 'tool' ? `도구 <code>${esc(e.name)}</code> → ${esc(e.result)}` : esc(e.type === 'start' ? '시작' : e.type === 'done' ? '완료' : '') + ' ' + esc(e.name)}</li>`).join('')}</ol></details>` : ''}
+    <p class="notice">AI가 만든 제안이에요. 약제·사용량은 정하지 않아요. 근거 값은 서버가 가진 예보·기록에서 그대로 가져와요.</p>
+  </div>`;
+}
+
+function bindPlan(root) {
+  root.querySelectorAll('#plRun').forEach((b) => b.onclick = () => runPlan(root));
+  root.querySelectorAll('[data-pick]').forEach((c) => c.onchange = () => { const i = +c.dataset.pick; c.checked ? pl.picked.add(i) : pl.picked.delete(i); });
+  const add = $('#plAdd', root);
+  if (add) add.onclick = () => {
+    if (!pl.picked.size) { toast('추가할 할 일을 골라 주세요'); return; }
+    let n = 0;
+    for (const i of pl.picked) { const x = pl.result.tasks[i]; if (addTask({ title: x.title, date: x.date, from: pl.result.source === 'agent' ? 'AI 작업 계획' : '날씨 안내' })) n++; }
+    save(); pl.picked.clear(); toast(n ? `일정 ${n}개를 추가했어요` : '이미 일정에 있어요'); render();
+  };
 }
 
 /* ---------- 지원사업 ---------- */
@@ -210,14 +292,14 @@ function viewToday() {
   const frosty = coldest && coldest.min <= 1;
   const wxHtml = w ? `
     <div class="card dark big">
-      <div class="card-head"><div class="grow"><p class="kicker">청도 · 주간 기온 참고</p>
+      <div class="card-head"><div class="grow"><p class="kicker">${esc(REGION.name)} · 실시간 예보</p>
         <div class="card-title">${frosty ? '서리 대비를<br>미리 챙겨요' : '이번 주 날씨를<br>살펴봐요'}</div></div>
         <svg width="80" height="46" viewBox="0 0 80 46" aria-hidden="true"><g fill="#f2d79b"><circle cx="22" cy="28" r="14"/><circle cx="40" cy="18" r="16"/><circle cx="58" cy="28" r="14"/><rect x="18" y="26" width="44" height="16" rx="8"/></g></svg></div>
       <div class="temp"><div class="big">${Math.round(coldest.min)}°</div>
         <div><b>${md(coldest.date)}(${dow(coldest.date)}) 최저기온</b><div class="small" style="opacity:.9">${frosty ? '덮개·관수 판단 전 최신 예보를 확인하세요.' : `지금 ${Math.round(w.current.t)}° · ${esc(w.current.sky)} · 습도 ${esc(w.current.h)}%`}</div></div></div>
       <div class="days">${w.days.slice(0, 6).map((d) => `
         <div class="day ${d.min <= 1 ? 'frost' : ''}"><b>${d.date === t ? '오늘' : md(d.date)}</b>${esc(d.sky)}<br>${Math.round(d.min)}°/${Math.round(d.max)}°</div>`).join('')}</div>
-      <div class="src">${w.source === 'live' ? '실시간' : '스냅샷'} · <a href="${esc(w.sourceUrl)}" target="_blank" rel="noopener">${esc(w.source === 'live' ? 'Open-Meteo' : '출처 기사 보기')} ${I('out', 14)}</a> · ${esc(fmtTime(w.fetchedAt))} 기준</div>
+      <div class="src">실시간 · <a href="${esc(w.sourceUrl)}" target="_blank" rel="noopener">Open-Meteo ${I('out', 14)}</a> · ${esc(fmtTime(w.fetchedAt))} 기준 · 기준 지역: ${esc(REGION.name)}(${esc(REGION.why)})</div>
     </div>` : '<div class="card">날씨를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</div>';
 
   const progs = (S.programs || []).map((p) => ({ p, m: programMatch(p) })).filter((x) => x.m.st !== 'no');
@@ -236,7 +318,7 @@ function viewToday() {
         <circle cx="128" cy="128" r="38" fill="#e8894a"/><circle cx="172" cy="104" r="36" fill="#e6a77a" opacity=".9"/><circle cx="206" cy="146" r="38" fill="#e6c1a2" opacity=".85"/>
         <g stroke="#e8a35a" stroke-width="3" stroke-linecap="round"><circle cx="218" cy="66" r="9" fill="#e8a35a"/><path d="M218 46v-8M218 94v-8M198 66h-8M246 66h-8M204 52l-5-5M232 80l5 5M232 52l5-5M204 80l-5 5"/></g>
         <path d="M0 176h300v60H0z" fill="#4a3d3b"/></g>
-      <text x="150" y="206" text-anchor="middle" fill="#fff" font-size="17" font-weight="800" font-family="Noto Sans KR,sans-serif">청도 · 감 농가</text>
+      <text x="150" y="206" text-anchor="middle" fill="#fff" font-size="17" font-weight="800" font-family="Noto Sans KR,sans-serif">${esc(REGION.short)} · 토마토 농가</text>
     </svg>
   </section>
 
@@ -268,7 +350,9 @@ function viewToday() {
     </div>
   </div>
 
-  <h2>날씨로 본 관리 안내 <span class="tag ai">AI 정리</span></h2>
+  ${viewPlan()}
+
+  <h2>날씨로 본 관리 안내 <span class="tag">규칙 기반</span></h2>
   ${adv.length ? adv.map((a, i) => `
     <div class="card tight adv ${a.level}">
       <div class="ic" aria-hidden="true">${I(a.icon, 22)}</div>
@@ -296,6 +380,7 @@ function viewToday() {
   <p class="notice">자격은 앱이 판정하지 않아요. 신청 전 공고 원문을 확인하세요.</p>`;
 }
 function bindToday(root) {
+  bindPlan(root);
   const adv = buildAdvice();
   root.querySelectorAll('[data-addtask]').forEach((b) => b.onclick = () => {
     const a = adv[+b.dataset.addtask];
@@ -308,7 +393,9 @@ function bindToday(root) {
 }
 
 /* ---------- 화면: 사진 진단 ---------- */
-const dx = { crop: '감(반시)', picked: new Set(), photo: null, stats: null, result: null, running: false, keepPhoto: false };
+const dx = { crop: '토마토', picked: new Set(), photo: null, stats: null, result: null, running: false, keepPhoto: false, sample: null };
+const LABEL_KO = Object.fromEntries(PESTS.filter((p) => p.label).map((p) => [p.label, p.name]));
+const koLabel = (l) => LABEL_KO[l] || l;
 
 function analyzePhoto(img) {
   const W = 160, H = Math.max(1, Math.round(img.height * (160 / img.width)));
@@ -380,9 +467,12 @@ function viewDiagnose() {
     <label class="f" for="photo">사진 (잎 앞·뒤, 열매, 줄기)</label>
     <label class="drop" for="photo">${dx.photo ? `<img src="${dx.photo}" alt="올린 작물 사진">` : `<span class="plus">${I('camera', 30)}</span><b>사진 찍기 또는 고르기</b><span class="small muted">JPG, PNG · 위치 정보는 지우고 분석해요</span>`}</label>
     <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+    ${dx.crop === '토마토' ? `<div class="small" style="margin-top:10px"><b>사진이 없으면 검증된 샘플로 해 보세요</b> <span class="muted">(정답 라벨이 있는 공개 데이터셋 사진)</span></div>
+    <div class="chips" role="group" aria-label="샘플 사진">${SAMPLES.map((x) => `<button class="chip" data-sample="${x.id}" aria-pressed="${dx.sample?.id === x.id}">${esc(koLabel(x.answer))}</button>`).join('')}</div>
+    ${dx.sample ? `<div class="small muted">샘플 정답 라벨: <b>${esc(koLabel(dx.sample.answer))}</b> · 출처: <a href="${dx.sample.url}" target="_blank" rel="noopener">${esc(dx.sample.set)}</a> (${esc(dx.sample.license)})</div>` : ''}` : ''}
     ${st ? `<div class="small" style="margin-top:8px">사진 색 분석(간이): 초록 ${st.green}% · 노랑 ${st.yellow}% · 갈색 ${st.brown}% · 검은 영역 ${st.dark}% · 흰 영역 ${st.white}%
       ${st.blurry ? '<br><span class="tag warn">사진이 흐릿해요</span>' : ''}${st.tooDark ? '<br><span class="tag warn">사진이 어두워요</span>' : ''}</div>` : ''}
-    <label class="f">보이는 특징 (여러 개 선택)</label>
+    <label class="f">보이는 특징 (여러 개 선택${dx.crop === '토마토' ? ', 사진이 있으면 선택하지 않아도 돼요' : ''})</label>
     <div class="chips">${syms.map((s) => `<button class="chip" data-sym="${s.id}" aria-pressed="${dx.picked.has(s.id)}">${esc(s.label)}</button>`).join('')}</div>
     <div style="margin-top:14px"><button class="btn primary block" id="runDx" ${dx.running ? 'disabled' : ''}>증상 확인하기</button></div>
   </div>
@@ -391,11 +481,31 @@ function viewDiagnose() {
   <p class="notice">결과는 참고용이에요. 약제명·희석 배수는 알려 드리지 않아요. 등록 약제는 <a href="${PEST_LINKS.pesticide}" target="_blank" rel="noopener">농약안전정보시스템</a>에서 확인하고 라벨대로 쓰세요.</p>`;
 }
 
+function classifierPanel(c) {
+  if (!c) return '';
+  return `<div class="card tight small" aria-label="분류 모델 결과">
+    <b>사진 분류 모델 결과 (참고값)</b>
+    ${c.top.map((t) => `<div class="row" style="gap:8px;margin-top:6px"><span style="min-width:9.5em">${esc(koLabel(t.label))}</span>
+      <span class="grow" style="background:var(--line,#ddd);border-radius:6px;height:10px;overflow:hidden" role="img" aria-label="확률 ${Math.round(t.prob * 100)}%"><span style="display:block;height:100%;width:${Math.round(t.prob * 100)}%;background:var(--green)"></span></span>
+      <span style="min-width:3em;text-align:right">${Math.round(t.prob * 100)}%</span></div>`).join('')}
+    <p class="muted" style="margin:6px 0 0">${esc(c.note)} 실측: ${esc(c.fieldAccuracy.dataset)}에서 1순위 ${Math.round(c.fieldAccuracy.top1 * 100)}%, 상위 3개 ${Math.round(c.fieldAccuracy.top3 * 100)}%.
+    모델: ${esc(c.model)}${c.ms != null ? ` · ${c.ms}ms` : ''}</p></div>`;
+}
+
+function sampleCheck(r) {
+  if (!dx.sample || r.hard || !r.top.length) return '';
+  const ok = r.top[0].p.label === dx.sample.answer;
+  return `<div class="card tight small"><b>샘플 정답과 비교</b>: 정답 라벨은 <b>${esc(koLabel(dx.sample.answer))}</b>이고, 1순위 후보는 <b>${esc(r.top[0].p.name)}</b>이에요.
+    <span class="tag ${ok ? '' : 'warn'}">${ok ? '일치' : '불일치'}</span></div>`;
+}
+
 function renderDxResult(r) {
   const fromAgent = r.source === 'agent';
-  const sourceTag = `<span class="tag ${fromAgent ? 'ai' : 'warn'}">${fromAgent ? 'AI 에이전트' : '앱 규칙 기반'}</span>`;
+  const fromModel = r.source === 'model';
+  const sourceTag = `<span class="tag ${fromAgent ? 'ai' : 'warn'}">${fromAgent ? 'AI 에이전트' : fromModel ? '사진 분류 모델' : '앱 규칙 기반'}</span>`;
   const sourceText = fromAgent
-    ? `Copilot 에이전트: 진단 → 검증 (${esc((r.models || []).join(', '))})`
+    ? `Copilot 에이전트: 진단(사진 + 분류 모델 도구) → 검증 (${esc((r.models || []).join(', '))})`
+    : fromModel ? 'AI 에이전트에 연결하지 못해 사진 분류 모델 결과만 보여 드려요. 에이전트의 사진 판단·검증은 빠졌어요.'
     : 'AI 에이전트 응답이 없어 앱 안의 규칙으로 정리했어요.';
   if (r.hard) return `
     <div class="card"><h3>판단하기 어려워요 ${sourceTag}</h3>
@@ -406,13 +516,18 @@ function renderDxResult(r) {
   return `
   <h2>의심 후보 ${sourceTag}</h2>
   <p class="small muted" style="margin-top:-6px">${sourceText}</p>
+  ${r.warning ? `<p class="tag warn">${esc(r.warning)}</p>` : ''}
+  ${r.observed ? `<div class="card tight small"><b>에이전트가 사진에서 본 특징</b><p style="margin:4px 0">${esc(r.observed)}</p></div>` : ''}
+  ${sampleCheck(r)}
+  ${classifierPanel(r.classifier)}
   ${r.top.map((c) => `
     <div class="card cand ${c.conf === '높음' ? 'high' : c.conf === '중간' ? 'mid' : 'low'}">
       <div class="row"><h3 class="grow">${esc(c.p.name)} <span class="muted small">(${esc(c.p.kind)})</span></h3><span class="tag ${c.conf === '높음' ? 'danger' : c.conf === '중간' ? 'warn' : ''}">확신 ${c.conf}</span></div>
       <p class="small">${esc(c.p.feature)}</p>
       <div class="small"><b>근거</b><ul style="margin:4px 0;padding-left:18px">${c.ev.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>
       <div class="small"><b>지금 할 관리</b><ul style="margin:4px 0;padding-left:18px">${c.p.care.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>
-      <div class="small"><a href="${PEST_LINKS.ncpms}" target="_blank" rel="noopener">도감에서 증상 비교</a> · <a href="${PEST_LINKS.pesticide}" target="_blank" rel="noopener">등록 약제 확인</a></div>
+      ${c.p.sources ? `<div class="small"><b>관리법 출처</b><ul style="margin:4px 0;padding-left:18px">${c.p.sources.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a></li>`).join('')}</ul></div>` : ''}
+      <div class="small"><a href="${PEST_LINKS.ncpms}" target="_blank" rel="noopener">도감에서 증상 비교</a> · <a href="${PEST_LINKS.pesticide}" target="_blank" rel="noopener">등록 약제 확인</a>${c.p.label === 'Healthy Tomato Plant' ? '' : ' · <a href="#machine" data-mgo="방제">방제 장비 빌리기</a>'}</div>
     </div>`).join('')}
   ${r.dropped.length ? `<div class="card tight small"><b>검증에서 뺀 후보</b>: ${r.dropped.map((c) => esc(c.p.name) + (c.reason ? ` (${esc(c.reason)})` : '')).join(', ')}${r.source === 'agent' ? '' : ' — 고른 특징 중 일부만 설명해서 근거가 부족해요.'}</div>` : ''}
   <div class="card tight">
@@ -422,24 +537,34 @@ function renderDxResult(r) {
 }
 
 function bindDiagnose(root) {
-  root.querySelectorAll('[data-crop]').forEach((b) => b.onclick = () => { dx.crop = b.dataset.crop; dx.picked.clear(); dx.result = null; render(); });
+  root.querySelectorAll('[data-crop]').forEach((b) => b.onclick = () => { dx.crop = b.dataset.crop; dx.picked.clear(); dx.result = null; if (dx.crop !== '토마토') dx.sample = null; render(); });
   root.querySelectorAll('[data-sym]').forEach((b) => b.onclick = () => {
     const id = b.dataset.sym; dx.picked.has(id) ? dx.picked.delete(id) : dx.picked.add(id); b.setAttribute('aria-pressed', dx.picked.has(id));
+  });
+  root.querySelectorAll('[data-sample]').forEach((b) => b.onclick = () => {
+    const x = SAMPLES.find((v) => v.id === b.dataset.sample); const img = new Image();
+    img.onload = () => { dx.stats = analyzePhoto(img); dx.photo = photoToJpeg(img); dx.sample = x; dx.result = null; render(); };
+    img.onerror = () => toast('샘플 사진을 불러오지 못했어요');
+    img.src = x.file;
   });
   $('#photo', root).onchange = (e) => {
     const f = e.target.files[0]; if (!f) return;
     if (!f.type.startsWith('image/') || f.size > 15e6) { toast('15MB 이하 이미지만 올릴 수 있어요'); return; }
     const url = URL.createObjectURL(f); const img = new Image();
-    img.onload = () => { dx.stats = analyzePhoto(img); dx.photo = photoToJpeg(img); URL.revokeObjectURL(url); dx.result = null; render(); };
+    img.onload = () => { dx.stats = analyzePhoto(img); dx.photo = photoToJpeg(img); dx.sample = null; URL.revokeObjectURL(url); dx.result = null; render(); };
     img.src = url;
   };
   $('#runDx', root).onclick = async () => {
     if (!dx.picked.size && !dx.photo) { toast('사진을 올리거나 특징을 하나 이상 골라 주세요'); return; }
+    if (!dx.picked.size && dx.crop !== '토마토') { toast('이 작물은 사진 판별 모델이 없어요. 보이는 특징을 골라 주세요'); return; }
     dx.running = true; $('#runDx', root).disabled = true; $('#runDx', root).textContent = '확인하는 중…';
-    const steps = ['사진 특징 정리', '도감 비교 + 날씨·이번 달 발생정보 확인 (동시)', '의심 후보 정리', '검증 — 근거 부족 후보 제외'];
+    const withPhoto = dx.crop === '토마토' && dx.photo;
+    const steps = withPhoto
+      ? ['사진 분류 모델 실행 (서버)', '진단 에이전트: 사진 특징 서술 + 도구 호출(분류 모델·도감·날씨)', '의심 후보 정리', '검증 에이전트: 사진·근거와 맞지 않는 후보 제외']
+      : ['사진 특징 정리', '도감 비교 + 날씨·이번 달 발생정보 확인 (동시)', '의심 후보 정리', '검증 — 근거 부족 후보 제외'];
     const box = $('#dxSteps', root);
     const draw = (k) => box.innerHTML = `<div class="card tight"><div class="steps">${steps.map((s, i) => `<div class="step ${i < k ? 'done' : i === k ? 'run' : ''}"><span class="dot"></span>${s}</div>`).join('')}</div></div>`;
-    const apiP = tryApi('/api/diagnose', { crop: dx.crop, symptoms: [...dx.picked], stats: dx.stats }, 95000);
+    const apiP = tryApi('/api/diagnose', { crop: dx.crop, symptoms: [...dx.picked], stats: dx.stats, image: withPhoto ? dx.photo : undefined }, 95000);
     for (let k = 0; k < steps.length - 1; k++) { draw(k); await new Promise((r) => setTimeout(r, 450)); }
     draw(steps.length - 1);
     const api = await apiP;
@@ -449,12 +574,14 @@ function bindDiagnose(root) {
   const kp = $('#keepPhoto', root); if (kp) kp.onchange = () => dx.keepPhoto = kp.checked;
   const sv = $('#saveDx', root); if (sv) sv.onclick = () => {
     const r = dx.result; const field = S.profile.fields.find((f) => f.crop === dx.crop);
-    const sourceLabel = r.source === 'agent' ? 'AI 추정' : '앱 규칙 기반';
+    const sourceLabel = r.source === 'agent' ? 'AI 추정' : r.source === 'model' ? '사진 분류 모델' : '앱 규칙 기반';
     S.logs.push({ id: uid(), date: todayStr(), fieldId: field?.id, work: '증상 관찰', hours: 0.2,
       note: r.hard ? `사진 진단(${sourceLabel}): 판단 어려움` : `사진 진단(${sourceLabel}): ${r.top.map((c) => `${c.p.name}(${c.conf})`).join(', ')}`,
       photo: dx.keepPhoto ? dx.photo : null });
-    if (!r.hard) addTask({ title: `${r.top[0].p.name} 확산 여부 다시 확인`, date: addDays(todayStr(), 3), from: '사진 진단' });
-    save(); toast('영농 기록에 남겼어요'); dx.result = null; dx.photo = null; dx.stats = null; dx.picked.clear(); location.hash = '#log';
+    const healthy = !r.hard && r.top[0].p.label === 'Healthy Tomato Plant';
+    if (!r.hard) addTask(healthy ? { title: '같은 잎 다시 찍어 비교하기', date: addDays(todayStr(), 7), from: '사진 진단' }
+      : { title: `${r.top[0].p.name} 확산 여부 다시 확인`, date: addDays(todayStr(), 3), from: '사진 진단' });
+    save(); toast('영농 기록에 남겼어요'); dx.result = null; dx.photo = null; dx.stats = null; dx.sample = null; dx.picked.clear(); location.hash = '#log';
   };
 }
 
@@ -526,36 +653,104 @@ function bindLog(root) {
   };
 }
 
-/* ---------- 화면: 농기계 ---------- */
-const mc = { work: '방제', area: null };
+/* ---------- 화면: 농기계 (청도군 임대사업소 보유 현황 공공데이터) ---------- */
+let RENT = null; // seed/machinery-cheongdo.json
+async function loadRental() { try { RENT = await getJSON('seed/machinery-cheongdo.json'); } catch { RENT = null; } }
+const mc = { work: null, area: null, fieldId: 'all', origin: null, q: '', pick: null, pickOffice: null };
+const km = (a, b) => { // 두 좌표 사이 거리(km, 직선)
+  const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+const mapUrl = (o) => `https://map.kakao.com/link/to/${encodeURIComponent(o.fullName)},${o.lat},${o.lon}`;
+const myCrops = () => new Set(S.profile.fields.map((f) => f.crop));
+// 내 작물에 맞는 작업을 앞에 둔다
+const guideList = () => { const c = myCrops(); return [...MACHINE_GUIDE].sort((a, b) => (b.crops.some((x) => c.has(x)) - a.crops.some((x) => c.has(x)))); };
+const officesByDistance = () => {
+  const from = mc.origin || { lat: FARM.lat, lon: FARM.lon };
+  return (RENT?.offices || []).map((o) => ({ ...o, d: km(from, o) })).sort((a, b) => a.d - b.d);
+};
+const fmtKm = (d) => (d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`);
+// 작업·면적 → 추천 기종 + 기종별 가까운 보유 사업소
+function recommendMachines(work, area) {
+  const g = MACHINE_GUIDE.find((x) => x.work === work); if (!g) return null;
+  const tier = g.tiers.find((t) => area <= t.max) || g.tiers[g.tiers.length - 1];
+  const offices = officesByDistance();
+  const items = tier.use.map((name) => {
+    const at = offices.filter((o) => o.machines[name] > 0).map((o) => ({ o, n: o.machines[name] }));
+    return { name, at, total: at.reduce((s, x) => s + x.n, 0) };
+  }).filter((it) => !RENT || it.total > 0); // 자료가 있으면 청도에 없는 기종은 빼고 보여 준다
+  return { g, tier, items };
+}
+
+// 기종 찾기: 이름 일부로 사업소별 보유 대수
+function machineFind(q) {
+  q = String(q || '').trim(); if (!q || !RENT) return '';
+  const offices = officesByDistance();
+  const kinds = [...new Set(RENT.offices.flatMap((o) => Object.keys(o.machines)))].filter((k) => k.includes(q));
+  if (!kinds.length) return '<p class="small muted">청도 임대사업소 자료에 없는 기종이에요. 다른 이름(예: 예초기 → 예취기)으로 찾아보세요.</p>';
+  return `<ul class="list">${kinds.map((k) => `<li class="small"><b>${esc(k)}</b> — ${offices.filter((o) => o.machines[k]).map((o) => `${esc(o.name)} ${o.machines[k]}대`).join(', ')}</li>`).join('')}</ul>`;
+}
 function viewMachine() {
+  const fields = S.profile.fields;
+  if (!mc.work) mc.work = guideList()[0].work;
   if (mc.area == null) mc.area = S.profile.totalAreaHa || 0.5;
-  const rule = (MACHINE_RULES[mc.work] || []).find((r) => mc.area <= r.max);
+  const rec = recommendMachines(mc.work, mc.area);
+  const crops = myCrops();
+  const offices = officesByDistance();
   const rentals = S.tasks.filter((t) => t.from === '농기계 임대' && !t.done);
+  const first = rec?.items[0];
   return `
   <h1>농기계 추천·임대</h1>
-  <p class="sub">밭 크기와 작업을 고르면 맞는 농기계와 청도 임대사업소를 알려 드려요.</p>
+  <p class="sub">밭과 작업을 고르면 맞는 농기계와, 그 기계가 있는 가장 가까운 청도 임대사업소를 알려 드려요.</p>
   <div class="card">
+    <label class="f">밭</label>
+    <div class="chips">
+      <button class="chip" data-mf="all" aria-pressed="${mc.fieldId === 'all'}">전체 ${esc(S.profile.totalAreaHa ?? '')}ha</button>
+      ${fields.map((f) => `<button class="chip" data-mf="${esc(f.id)}" aria-pressed="${mc.fieldId === f.id}">${esc(f.name)} · ${esc(f.crop)} ${esc(f.areaHa)}ha</button>`).join('')}
+    </div>
     <label class="f" for="mcArea">면적 (ha)</label><input type="number" id="mcArea" min="0.01" step="0.05" value="${mc.area}">
-    <div class="small muted">1ha = 10,000㎡ ≈ 3,025평 · 지금 밭 합계 ${S.profile.totalAreaHa ?? '-'}ha</div>
+    <div class="small muted">1ha = 10,000㎡ ≈ 3,025평 · 0.1ha ≈ 300평</div>
     <label class="f">작업</label>
-    <div class="chips">${Object.keys(MACHINE_RULES).map((w) => `<button class="chip" data-mw="${esc(w)}" aria-pressed="${w === mc.work}">${esc(w)}</button>`).join('')}</div>
+    <div class="chips">${guideList().map((g) => `<button class="chip" data-mw="${esc(g.work)}" aria-pressed="${g.work === mc.work}">${esc(g.work)}${g.crops.some((c) => crops.has(c)) ? ' ·내 작물' : ''}</button>`).join('')}</div>
   </div>
-  <div class="card adv"><div class="ic">${I('tractor', 22)}</div><div class="grow"><b>${esc(rule?.m || '-')}</b> <span class="tag">예시 기준</span>
-    <div class="why">근거: ${esc(mc.work)} 작업, 면적 ${esc(mc.area)}ha. 실제 임대 가능 기종과 사용법은 임대사업소에서 확인하세요. 처음 쓰는 기계는 사용 교육을 받으세요.</div></div></div>
+
+  ${rec ? `<div class="card adv"><div class="ic">${I('tractor', 22)}</div><div class="grow">
+    <div class="row wrap-it"><b class="grow">${esc(mc.work)} · ${esc(mc.area)}ha</b><span class="tag">예시 기준</span></div>
+    <div class="why">${esc(rec.tier.why)}</div>
+    ${rec.items.length ? `<ul class="list" style="margin-top:6px">${rec.items.map((it, i) => `<li>
+      <div class="row"><b class="grow">${i === 0 ? '추천 ' : ''}${esc(it.name)}</b>${RENT ? `<span class="tag ok">청도 ${it.total}대</span>` : ''}</div>
+      ${it.at.length ? `<div class="small">가까운 곳: <b>${esc(it.at[0].o.name)}</b> ${fmtKm(it.at[0].o.d)} · ${it.at[0].n}대${it.at.length > 1 ? ` <span class="muted">(그 밖에 ${it.at.slice(1).map((x) => `${esc(x.o.name)} ${x.n}대`).join(', ')})</span>` : ''}</div>
+        <div class="row wrap-it" style="margin-top:6px"><a class="btn sm" href="tel:${esc(it.at[0].o.tel)}">${esc(it.at[0].o.name)} 전화 ${esc(it.at[0].o.tel)}</a><button class="btn sm ghost" data-mpick="${esc(it.name)}" data-moff="${esc(it.at[0].o.id)}">이 기계로 예약 기록</button></div>` : ''}
+    </li>`).join('')}</ul>` : '<p class="small">이 작업에 맞는 기종이 청도 임대사업소 자료에 없어요. 청도군청에 문의하세요.</p>'}
+    ${rec.g.note ? `<div class="why">${esc(rec.g.note)}</div>` : ''}
+    <div class="why">대수는 사업소가 가진 수량이에요. 지금 빌릴 수 있는지는 전화로 확인하세요.</div>
+  </div></div>` : ''}
 
   <h2>청도 임대사업소</h2>
-  <div class="card">
-    <p class="small" style="margin-top:0">${esc(RENTAL.summary)}</p>
-    <ul class="list">${RENTAL.offices.map((o) => `<li><b>${esc(o.name)}</b><div class="small muted">주소·전화는 청도군농업기술센터 또는 아래 공공데이터에서 확인</div></li>`).join('')}</ul>
-    <div class="small">${RENTAL.sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(' · ')}</div>
-  </div>
+  ${RENT ? `<div class="card">
+    <p class="small" style="margin:0">${RENT.totals.offices}곳 · ${RENT.totals.kinds}종 ${RENT.totals.units}대 (${esc(RENT.baseDate)} 기준) · 거리는 ${mc.origin ? '내 위치' : '청도군청'}에서 직선거리</p>
+    <button class="btn sm ghost" id="mcGeo" style="margin-top:8px">내 위치 기준으로 다시 재기</button>
+    <ul class="list">${offices.map((o) => `<li>
+      <div class="row"><b class="grow">${esc(o.fullName)}</b><span class="tag">${fmtKm(o.d)}</span></div>
+      <div class="small muted">${esc(o.road)}</div>
+      <div class="row wrap-it" style="margin-top:6px"><a class="btn sm" href="tel:${esc(o.tel)}">전화 ${esc(o.tel)}</a><a class="btn sm ghost" href="${mapUrl(o)}" target="_blank" rel="noopener">길찾기</a></div>
+      <details class="small" style="margin-top:6px"><summary>보유 농기계 ${Object.keys(o.machines).length}종 ${Object.values(o.machines).reduce((a, b) => a + b, 0)}대</summary>
+        <p style="margin:6px 0">${Object.entries(o.machines).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${esc(k)} ${n}`).join(' · ')}</p></details>
+    </li>`).join('')}</ul>
+    <label class="f" for="mcQ">기종 찾기</label><input type="search" id="mcQ" placeholder="예: 예취기, 파쇄기, 운반" value="${esc(mc.q)}" maxlength="20">
+    <div id="mcFound" aria-live="polite">${machineFind(mc.q)}</div>
+    <div class="small" style="margin-top:10px">출처: <a href="${esc(RENT.source.url)}" target="_blank" rel="noopener">${esc(RENT.source.title)}</a> · 관리 ${esc(RENT.manager.name)} ${esc(RENT.manager.tel)}</div>
+  </div>` : `<div class="card"><p class="small" style="margin:0">임대사업소 자료를 불러오지 못했어요. 청도군청(054-370-6277)에 문의하세요.</p></div>`}
+
+  <h2>처음 빌릴 때 물어볼 것</h2>
+  <div class="card"><ul style="margin:0;padding-left:18px" class="small">${RENTAL_ASK.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>
 
   <h2>예약을 일정에 기록</h2>
-  <div class="card">
-    <p class="small muted" style="margin-top:0">실시간 예약 현황은 공개된 연동 방법을 찾지 못했어요. 전화로 예약한 뒤 여기 적어 두면 대여·반납 알림을 만들어 드려요.</p>
-    <div class="row"><div class="grow"><label class="f" for="rvOffice">사업소</label><select id="rvOffice">${RENTAL.offices.map((o) => `<option>${esc(o.name)}</option>`).join('')}</select></div></div>
-    <label class="f" for="rvMachine">기종</label><input type="text" id="rvMachine" value="${esc(rule?.m || '')}" maxlength="40">
+  <div class="card" id="rvCard">
+    <p class="small muted" style="margin-top:0">실시간 예약은 연동되어 있지 않아요. 전화로 예약한 뒤 여기 적어 두면 대여·반납 일정을 만들어 드려요.</p>
+    <div class="row"><div class="grow"><label class="f" for="rvOffice">사업소</label><select id="rvOffice">${(offices.length ? offices : [{ fullName: '청도군 농기계임대사업소' }]).map((o) => `<option ${o.id && o.id === (mc.pickOffice || first?.at[0]?.o.id) ? 'selected' : ''}>${esc(o.fullName)}</option>`).join('')}</select></div></div>
+    <label class="f" for="rvMachine">기종</label><input type="text" id="rvMachine" value="${esc(mc.pick || first?.name || '')}" maxlength="40">
     <div class="row"><div class="grow"><label class="f" for="rvFrom">대여일</label><input type="date" id="rvFrom" value="${addDays(todayStr(), 1)}"></div>
       <div class="grow"><label class="f" for="rvTo">반납일</label><input type="date" id="rvTo" value="${addDays(todayStr(), 2)}"></div></div>
     <button class="btn primary block" id="rvSave" style="margin-top:14px">대여·반납 일정 추가</button>
@@ -563,17 +758,35 @@ function viewMachine() {
   </div>`;
 }
 function bindMachine(root) {
-  root.querySelectorAll('[data-mw]').forEach((b) => b.onclick = () => { mc.work = b.dataset.mw; render(); });
-  $('#mcArea', root).onchange = (e) => { mc.area = Math.max(0.01, +e.target.value || 0.5); render(); };
+  const reset = () => { mc.pick = null; mc.pickOffice = null; };
+  root.querySelectorAll('[data-mw]').forEach((b) => b.onclick = () => { mc.work = b.dataset.mw; reset(); render(); });
+  root.querySelectorAll('[data-mf]').forEach((b) => b.onclick = () => {
+    mc.fieldId = b.dataset.mf; const f = S.profile.fields.find((x) => x.id === mc.fieldId);
+    mc.area = f ? f.areaHa : (S.profile.totalAreaHa || 0.5); reset(); render();
+  });
+  $('#mcArea', root).onchange = (e) => { mc.area = Math.max(0.01, +e.target.value || 0.5); mc.fieldId = null; reset(); render(); };
+  root.querySelectorAll('[data-mpick]').forEach((b) => b.onclick = () => {
+    mc.pick = b.dataset.mpick; mc.pickOffice = b.dataset.moff; render();
+    $('#rvCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  const qi = $('#mcQ', root); if (qi) qi.oninput = () => { mc.q = qi.value; $('#mcFound', root).innerHTML = machineFind(mc.q); }; // 입력 중 전체를 다시 그리지 않는다(한글 조합 유지)
+  const geo = $('#mcGeo', root); if (geo) geo.onclick = () => {
+    if (!navigator.geolocation) { toast('이 기기에서는 위치를 쓸 수 없어요'); return; }
+    navigator.geolocation.getCurrentPosition((p) => { mc.origin = { lat: p.coords.latitude, lon: p.coords.longitude }; toast('내 위치 기준으로 다시 정렬했어요'); render(); },
+      () => toast('위치를 가져오지 못했어요. 청도군청 기준으로 보여 드려요'), { timeout: 8000, maximumAge: 600000 });
+  };
   $('#rvSave', root).onclick = () => {
     const o = $('#rvOffice', root).value, m = $('#rvMachine', root).value.trim() || '농기계', f = $('#rvFrom', root).value, t = $('#rvTo', root).value;
     if (!f || !t || t < f) { toast('날짜를 확인해 주세요'); return; }
-    addTask({ title: `${m} 대여 (${o})`, date: f, from: '농기계 임대' });
-    addTask({ title: `${m} 반납 (${o})`, date: t, from: '농기계 임대' });
-    S.logs.push({ id: uid(), date: todayStr(), fieldId: S.profile.fields[0]?.id, work: '농기계 사용', hours: 0, note: `${o} ${m} 예약 ${md(f)}~${md(t)}` });
+    const short = o.replace('청도군 농기계임대사업소 ', '');
+    addTask({ title: `${m} 대여 (${short})`, date: f, from: '농기계 임대' });
+    addTask({ title: `${m} 반납 (${short})`, date: t, from: '농기계 임대' });
+    S.logs.push({ id: uid(), date: todayStr(), fieldId: mc.fieldId && mc.fieldId !== 'all' ? mc.fieldId : S.profile.fields[0]?.id, work: '농기계 사용', hours: 0, note: `${short} ${m} 예약 ${md(f)}~${md(t)}` });
     save(); toast('대여·반납 일정을 추가했어요'); render();
   };
 }
+// 다른 화면(진단 등)에서 작업을 정해 농기계 화면으로 보낸다: <a href="#machine" data-mgo="방제">
+document.addEventListener('click', (e) => { const a = e.target.closest?.('[data-mgo]'); if (a) { mc.work = a.dataset.mgo; mc.pick = null; mc.pickOffice = null; } });
 
 /* ---------- 화면: 커뮤니티 ---------- */
 const cm = { tab: 'all', topic: '전체', q: '', open: null, ask: '', askResult: null };
@@ -731,6 +944,6 @@ $('#reset').onclick = () => { if (confirm('시연 데이터를 처음 상태로 
   mountTabs();
   $('#view').innerHTML = '<div class="empty" style="padding:60px 0">불러오는 중…</div>';
   await initState();
-  await loadWeather();
+  await Promise.all([loadWeather(), loadRental()]);
   render();
 })();
