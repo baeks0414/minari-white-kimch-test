@@ -150,7 +150,7 @@ export const SEED_POSTS = [
   { id: 's1', type: 'tip', author: '하우스 토마토 15년', senior: true, crop: '토마토', topic: '서리·보온', createdAt: '2026-11-03T19:10:00+09:00', likes: 12, example: true,
     title: '밤 기온이 10도 아래로 내려가기 전에 할 일',
     body: '밤 최저기온이 10도 아래로 내려간다는 예보가 나오면 해 지기 전에 보온 커튼을 닫고 측창을 일찍 닫습니다. 다음 날 아침에는 결로가 생기니 해 뜬 뒤 짧게 환기합니다.' },
-  { id: 's2', type: 'tip', author: '해남 귀농 7년차', senior: true, crop: '토마토', topic: '병해충', createdAt: '2026-11-01T08:20:00+09:00', likes: 9, example: true,
+  { id: 's2', type: 'tip', author: '이서 귀농 7년차', senior: true, crop: '토마토', topic: '병해충', createdAt: '2026-11-01T08:20:00+09:00', likes: 9, example: true,
     title: '비 온 뒤에는 아래 잎부터 살핍니다',
     body: '비가 이어지면 아래쪽 오래된 잎에 동심원 무늬 반점이 늘어납니다. 보이는 대로 따서 하우스 밖으로 내가고, 약은 꼭 토마토에 등록된 약제인지 농약안전정보시스템에서 확인한 뒤 라벨대로만 씁니다.' },
   { id: 's3', type: 'tip', author: '시설토마토 20년', senior: true, crop: '토마토', topic: '물 관리', createdAt: '2026-10-29T07:00:00+09:00', likes: 15, example: true,

@@ -30,14 +30,14 @@ log = logging.getLogger("farm-planner")
 HERE = pathlib.Path(__file__).parent
 KST = dt.timezone(dt.timedelta(hours=9))
 
-# 기준 지역: 전국 시군 중 경지면적이 가장 넓은 전남 해남군(군청 좌표).
+# 기준 지역: 서비스 대상인 경북 청도군(군청 좌표).
 # 지금은 한 지역 예보를 기준으로 쓰고, 나중에 농가 위치별로 바꾼다.
 REGION = {
-    "id": "haenam",
-    "name": "전남 해남군",
-    "lat": 34.5733,
-    "lon": 126.5993,
-    "why": "전국 시군 중 경지면적이 가장 넓은 지역",
+    "id": "cheongdo",
+    "name": "경북 청도군",
+    "lat": 35.6475,
+    "lon": 128.7339,
+    "why": "서비스 대상 지역 (청도 바이브코딩 해커톤 과제 지역)",
 }
 
 GUIDES = json.loads((HERE / "crop-guide.json").read_text(encoding="utf-8"))

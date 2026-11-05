@@ -67,7 +67,7 @@ async function tryApi(path, body, ms = 8000) {
 }
 
 /* ---------- 저장소 (이 브라우저에만 저장) ---------- */
-const KEY = 'baekkimchi.farm.v2'; // v2: 토마토 시연 농가, 해남 날씨
+const KEY = 'baekkimchi.farm.v3'; // v3: 토마토 시연 농가, 청도 날씨
 let S = null;
 function load() { try { S = JSON.parse(localStorage.getItem(KEY)); } catch { S = null; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { toast('저장 공간이 부족해요. 사진 저장을 줄여 주세요.'); } }
@@ -610,7 +610,7 @@ function viewLog() {
     <label class="f">작업</label>
     <div class="chips" id="lgWork">${WORK_TYPES.map((w, i) => `<button class="chip" data-work="${esc(w)}" aria-pressed="${i === 0}">${esc(w)}</button>`).join('')}</div>
     <div class="row"><div style="width:120px"><label class="f" for="lgHours">시간</label><input type="number" id="lgHours" min="0" step="0.5" value="2"></div>
-      <div class="grow"><label class="f" for="lgNote">메모</label><input type="text" id="lgNote" maxlength="200" placeholder="예: 2번 밭 반시 20상자"></div></div>
+      <div class="grow"><label class="f" for="lgNote">메모</label><input type="text" id="lgNote" maxlength="200" placeholder="예: 1동 하우스 토마토 수확 12상자"></div></div>
     <button class="btn primary block" id="lgSave" style="margin-top:14px">기록 저장</button>
   </div>
   ${logSuggest ? `<div class="card tight adv info"><div class="ic">${I('calendar', 22)}</div><div class="grow"><b>다음 할 일 제안</b> <span class="tag ai">AI 제안</span>
@@ -833,7 +833,7 @@ function viewCommunity() {
   <dialog id="writeDlg"><form method="dialog" class="in" id="writeForm">
     <h3>글쓰기</h3>
     <div class="seg" id="wType"><button type="button" data-wt="tip" aria-pressed="true">노하우 공유</button><button type="button" data-wt="question" aria-pressed="false">질문하기</button></div>
-    <div class="row"><div class="grow"><label class="f" for="wCrop">작물</label><select id="wCrop"><option>감(반시)</option><option>미나리</option><option>공통</option></select></div>
+    <div class="row"><div class="grow"><label class="f" for="wCrop">작물</label><select id="wCrop"><option>토마토</option><option>공통</option></select></div>
       <div class="grow"><label class="f" for="wTopic">주제</label><select id="wTopic">${TOPICS.slice(1).map((t) => `<option>${esc(t)}</option>`).join('')}</select></div></div>
     <label class="f" for="wAuthor">닉네임</label><input type="text" id="wAuthor" maxlength="20" value="${esc(S.profile.nickname || '')}">
     <label class="row small" style="margin-top:8px"><input type="checkbox" id="wSenior"> 영농 5년 이상 선배 농부예요 (본인 표시)</label>

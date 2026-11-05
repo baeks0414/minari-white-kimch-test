@@ -83,7 +83,7 @@ class FakeAgent(BaseAgent):
 
 
 FIXED_WX = {
-    "source": "고정 시험 자료", "sourceUrl": "", "region": "전남 해남군", "fetchedAt": "2026-11-05T14:00+09:00",
+    "source": "고정 시험 자료", "sourceUrl": "", "region": "경북 청도군", "fetchedAt": "2026-11-05T14:00+09:00",
     "current": {"temp_c": 17.4, "humidity": 83, "wind_ms": 5.6, "time": "2026-11-05T14:00"},
     "days": [],
 }
@@ -132,7 +132,7 @@ async def main():
     ev = out["tasks"][0]["evidence"]
     n += 1; check(any(e["kind"] == "weather" and "최저기온" in e["label"] for e in ev), f"근거 값은 서버 자료에서 붙임 {[e['label'] for e in ev]}")
     n += 1; check(len(out["risks"]) == 1, "날씨 위험도 없는 근거는 제외")
-    n += 1; check(out["source"] == "agent" and out["weather"]["region"] == "전남 해남군", "응답 형식")
+    n += 1; check(out["source"] == "agent" and out["weather"]["region"] == "경북 청도군", "응답 형식")
     print(f"TOTAL {ok} / {n}")
     print(json.dumps({k: out[k] for k in ("tasks", "risks", "weather", "ms")}, ensure_ascii=False, indent=1)[:1500])
     return ok == n

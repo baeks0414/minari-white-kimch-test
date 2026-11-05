@@ -82,7 +82,7 @@ async def main():
         ok(2, '서리 대비' in t, '서리 카드 제목')
         ok(2, '관수 보류' in t, '비 온 뒤 관수 보류 안내')
         ok(2, '잿빛곰팡이병' in t, '습한 날씨 뒤 곰팡이병 예찰 안내')
-        ok(2, '전남 해남군' in t, '기준 지역 표시')
+        ok(2, '경북 청도군' in t, '기준 지역 표시')
         ok(2, '실시간' in t and 'Open-Meteo' in t, '실시간 출처 표시')
         n0 = await pg.locator('[data-addtask]').count()
         await pg.locator('[data-addtask]').first.click(); await pg.wait_for_timeout(200)
@@ -91,12 +91,12 @@ async def main():
         ok(2, await pg.locator('[data-addtask]').count() == n0 - 1 and '일정에 추가됨' in t, '추가한 안내는 다시 추가 못 함(중복 방지)')
         ok(2, '보온 커튼·덮개 점검' in (await pg.inner_text('.tl')), '다음에 할 일 카드에 실제 일정')
 
-        # 3 감 탄저병 진단 → 기록·일정
-        await go(pg, '#diagnose'); await pg.click('[data-crop="감(반시)"]')
-        for s in ['fruit_black_sunken', 'pink_spore']: await pg.click(f'[data-sym={s}]')
+        # 3 토마토 겹둥근무늬병(증상 선택) 진단 → 기록·일정
+        await go(pg, '#diagnose'); await pg.click('[data-crop="토마토"]')
+        for s in ['t_concentric', 't_lower_first']: await pg.click(f'[data-sym={s}]')
         await pg.click('#runDx'); await pg.wait_for_selector('#saveDx', timeout=8000)
         t = await pg.inner_text('#view')
-        ok(3, '탄저병' in t and '확신 높음' in t, '탄저병 확신 높음')
+        ok(3, '겹둥근무늬병' in t and '확신 높음' in t, '겹둥근무늬병 확신 높음')
         ok(3, '앱 규칙 기반' in t and await pg.locator('#view .tag.ai').count() == 0, '규칙 기반 fallback으로 표시')
         ok(3, '습한 조건' in t, '날씨 근거 포함')
         ct = ' '.join(await pg.locator('.cand').all_inner_texts()); ok(3, ct and not any(k in ct for k in ['희석', '배액', 'ml', '살포량', '배 희석']), '후보 카드에 약제 처방 없음')
@@ -108,31 +108,31 @@ async def main():
 
         # 3b 에이전트 응답이 오면 에이전트 결과로 표시
         pga = await page(b, live='fail')
-        AG = {"top": [{"p": {"name": "탄저병", "kind": "병", "feature": "f", "care": ["c"]}, "conf": "중간", "ev": ["분홍 포자"]}], "dropped": [{"p": {"name": "둥근무늬낙엽병"}, "reason": "근거 부족"}], "hard": False, "source": "agent", "models": ["gpt-5", "claude-sonnet-4"]}
+        AG = {"top": [{"p": {"name": "겹둥근무늬병", "kind": "병", "feature": "f", "care": ["c"]}, "conf": "중간", "ev": ["동심원 무늬"]}], "dropped": [{"p": {"name": "역병"}, "reason": "근거 부족"}], "hard": False, "source": "agent", "models": ["gpt-5", "claude-sonnet-4"]}
         await pga.route('**/api/diagnose', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps(AG)))
-        await go(pga, '#diagnose'); await pga.click('[data-crop="감(반시)"]'); await pga.click('[data-sym=pink_spore]'); await pga.click('#runDx'); await pga.wait_for_selector('#saveDx', timeout=8000)
+        await go(pga, '#diagnose'); await pga.click('[data-crop="토마토"]'); await pga.click('[data-sym=t_concentric]'); await pga.click('#runDx'); await pga.wait_for_selector('#saveDx', timeout=8000)
         t = await pga.inner_text('#view')
         ok(3, 'AI 에이전트' in t and 'Copilot 에이전트' in t and '앱 규칙 기반' not in t and '근거 부족' in t and await pga.locator('#view h2 .tag.ai').count() == 1, '실제 에이전트 결과와 검증 사유 표시')
 
         # 4 아무것도 안 고르고 진단 / 흐린 사진
-        pg4 = await page(b, live='fail'); await go(pg4, '#diagnose'); await pg4.click('[data-crop="감(반시)"]')
+        pg4 = await page(b, live='fail'); await go(pg4, '#diagnose'); await pg4.click('[data-crop="토마토"]')
         await pg4.click('#runDx'); await pg4.wait_for_timeout(300)
         ok(4, await pg4.locator('#dxSteps .steps').count() == 0, '입력 없으면 진단 안 함')
         await pg4.set_input_files('#photo', files=[{'name': 'g.png', 'mimeType': 'image/png', 'buffer': gray_png()}]); await pg4.wait_for_timeout(600)
         t = await pg4.inner_text('#view'); ok(4, '흐릿' in t, f'흐린 사진 경고')
-        await pg4.click('[data-sym=early_leaf_drop]'); await pg4.click('#runDx'); await pg4.wait_for_timeout(3000)
+        await pg4.click('[data-sym=t_stunt]'); await pg4.click('#runDx'); await pg4.wait_for_timeout(3000)
         t = await pg4.inner_text('#view')
         ok(4, '판단하기 어려워요' in t, '흐린 사진 + 약한 특징 → 판단 어려움')
         ok(4, '앱 규칙 기반' in t and await pg4.locator('#view .tag.ai').count() == 0, '판단 어려움도 fallback으로 표시')
 
-        # 5 미나리 진딧물 + 사진 저장(위치 정보 제거)
-        await go(pg4, '#diagnose'); await pg4.click('[data-crop="미나리"]')
+        # 5 토마토 잎곰팡이병(사진 + 증상) + 사진 저장(위치 정보 제거)
+        await go(pg4, '#diagnose'); await pg4.click('[data-crop="토마토"]')
         leaf = leaf_png()
         ok(5, has_gps_exif(leaf), '업로드 사진에 GPS EXIF 포함')
         await pg4.set_input_files('#photo', files=[{'name': 'l.jpg', 'mimeType': 'image/jpeg', 'buffer': leaf}]); await pg4.wait_for_timeout(600)
-        for s in ['small_insects', 'sticky']: await pg4.click(f'[data-sym={s}]')
+        for s in ['t_upper_yellow', 't_olive_mold_under']: await pg4.click(f'[data-sym={s}]')
         await pg4.click('#runDx'); await pg4.wait_for_selector('#saveDx', timeout=8000)
-        t = await pg4.inner_text('#view'); ok(5, '진딧물' in t, '미나리 진딧물 후보')
+        t = await pg4.inner_text('#view'); ok(5, '잎곰팡이병' in t, '토마토 잎곰팡이병 후보')
         await pg4.check('#keepPhoto'); await pg4.click('#saveDx'); await pg4.wait_for_timeout(400)
         ok(5, await pg4.locator('img[alt="기록 사진"]').count() == 1, '사진 기록 저장')
         src = await pg4.get_attribute('img[alt="기록 사진"]', 'src')
@@ -172,7 +172,7 @@ async def main():
         # 8 커뮤니티: XSS·개인정보·질문 관련 노하우·댓글·좋아요·신고
         await go(pg4, '#community')
         await pg4.click('#writeBtn'); await pg4.click('[data-wt="question"]')
-        await pg4.fill('#wTitle', '<img src=x onerror="window.__x=1"> 서리 오면 덮개 언제?'); await pg4.fill('#wBody', '연락 010-1234-5678, 주민 900101-1234567')
+        await pg4.fill('#wTitle', '<img src=x onerror="window.__x=1"> 밤 기온 떨어지면 보온 커튼 언제?'); await pg4.fill('#wBody', '연락 010-1234-5678, 주민 900101-1234567')
         await pg4.click('#wSubmit'); await pg4.wait_for_timeout(400)
         t = await pg4.inner_text('#view')
         ok(8, not await pg4.evaluate('window.__x'), 'XSS 실행 안 됨')
@@ -185,8 +185,8 @@ async def main():
         cnt = await pg4.locator('article.post').count(); pg4.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg4.locator('[data-report]').last.click(); await pg4.wait_for_timeout(300)
         ok(8, await pg4.locator('article.post').count() == cnt - 1, '신고하면 숨김')
-        await pg4.fill('#askIn', '탄저병 어떻게 해요'); await pg4.click('#askBtn'); await pg4.wait_for_timeout(300)
-        ok(8, '관련 노하우' in await pg4.inner_text('#view'), '탄저병 질문 → 노하우 찾음')
+        await pg4.fill('#askIn', '포기 밑동에 물 주는 법'); await pg4.click('#askBtn'); await pg4.wait_for_timeout(300)
+        ok(8, '관련 노하우' in await pg4.inner_text('#view'), '물 주기 질문 → 노하우 찾음')
 
         # 9 저장소 막힘(사생활 모드) / 새로고침 후 유지
         pg9 = await page(b, live='fail', block_storage=True)
@@ -196,7 +196,7 @@ async def main():
 
         # 11 AI 작업 계획: 에이전트 응답 → 근거·검증 표시 → 고른 것만 일정 추가
         PLAN = {"source": "agent", "agents": ["weather", "field", "planner"], "models": {"weather": "gpt-5-mini", "field": "gpt-5-mini", "planner": "gpt-5-mini"},
-                "ms": 23100, "weather": {"region": "전남 해남군", "fetchedAt": "2026-11-05T14:30+09:00"},
+                "ms": 23100, "weather": {"region": "경북 청도군", "fetchedAt": "2026-11-05T14:30+09:00"},
                 "tasks": [{"title": "하우스 보온 커튼 점검", "date": "2026-11-06", "fieldId": "field-1", "category": "보온", "priority": "높음", "reason": "11/7 저온 예보",
                            "evidence": [{"id": "W:2026-11-07:min_c", "kind": "weather", "label": "11/7 최저기온 -1℃"}]},
                           {"title": "잎 뒷면 곰팡이 예찰", "date": "2026-11-05", "fieldId": "field-2", "category": "병해 예찰", "priority": "보통", "reason": "습도 높음",
